@@ -1,5 +1,7 @@
 #include "mf/engine.hpp"
 
+#include <set>
+
 #include <sstream>
 #include <thread>
 
@@ -39,6 +41,7 @@ std::string Engine::createProject(const std::string& name, int w, int h, double 
 std::string Engine::createProjectFromDoc(const json& doc, std::string* err) { return store_.create(doc, err); }
 
 bool Engine::openProject(const std::string& id, std::string& err, bool recover) {
+    renderer_.expressions()->clearErrors();
     if (isOpen()) closeProject();
     json d;
     std::vector<std::string> log;
@@ -72,6 +75,7 @@ bool Engine::openProject(const std::string& id, std::string& err, bool recover) 
 
 void Engine::closeProject() {
     if (!isOpen()) return;
+    renderer_.expressions()->clearErrors();  // errors are keyed by layer id, which repeats across projects
     std::string err;
     if (doc_.dirty()) save(err);
     writeThumbnail(0.5);
@@ -301,7 +305,12 @@ json Engine::diagnostics() {
     auto ds = diagnoseProject(*snap, FontManager::instance().names(), [this](const json& a) { return media_->available(a); });
     json out = json::array();
     for (auto& d : ds) out.push_back({{"severity", d.severity}, {"code", d.code}, {"message", d.message}, {"target", d.target}, {"recommendation", d.recommendation}});
+    // Only report expression errors for layers that exist in this project (keys are "layerId:path").
+    std::set<std::string> ids;
+    for (auto& c : jarr(*snap, "comps"))
+        for (auto& L : jarr(c, "layers")) ids.insert(L.value("id", std::string()));
     for (auto& [k, e] : renderer_.expressions()->errors())
+        if (ids.count(k.substr(0, k.find(':'))))
         out.push_back({{"severity", "warning"}, {"code", "EXPRESSION_ERROR"}, {"message", e}, {"target", k}, {"recommendation", "Fix the expression; the keyframed value is used meanwhile."}});
     return out;
 }

@@ -510,3 +510,29 @@ TEST(whisper_offline_captions_jfk) {
     AsrResult rb = transcribe(resampleMono(buf, 16000), bad);
     CHECK(!rb.ok && rb.error.find("model") != std::string::npos);
 }
+
+TEST(diagnostics_expression_errors_do_not_leak_between_projects) {
+    std::string dir = freshDir("diagleak");
+    FileMediaProvider media;
+    EngineConfig cfg;
+    cfg.dataDir = dir;
+    cfg.cacheDir = dir + "/cache";
+    cfg.autosaveInterval = 0;
+    Engine E(cfg, &media);
+    std::string err;
+    std::string a = E.createProject("A", 320, 180, 30, 2, &err);
+    REQUIRE(E.openProject(a, err));
+    OpOutcome o = E.apply({{"op", "addLayer"}, {"kind", "solid"}});
+    std::string lid = o.data["layer"];
+    E.apply({{"op", "setExpression"}, {"layer", lid}, {"path", "transform.rotation"}, {"expr", "thisIsNotDefined * 2"}});
+    E.render(0.5, 0.25, RenderSettings());
+    bool sawError = false;
+    for (auto& d : E.diagnostics()) sawError |= d.value("code", "") == "EXPRESSION_ERROR";
+    CHECK(sawError);
+    E.closeProject();
+    // A different project whose layer has the same id must not inherit project A's error.
+    std::string b = E.createProject("B", 320, 180, 30, 2, &err);
+    REQUIRE(E.openProject(b, err));
+    E.apply({{"op", "addLayer"}, {"kind", "solid"}});
+    for (auto& d : E.diagnostics()) CHECK(d.value("code", "") != "EXPRESSION_ERROR");
+}

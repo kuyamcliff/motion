@@ -35,6 +35,7 @@ import java.io.File
  */
 @RunWith(AndroidJUnit4::class)
 class WorkflowRegressionTest {
+    @get:org.junit.Rule val artifacts = FailureArtifacts()
     private val ctx get() = InstrumentationRegistry.getInstrumentation().targetContext
 
     private fun createAndOpen(st: EditorState, name: String, dur: Double): String {
@@ -148,12 +149,12 @@ class WorkflowRegressionTest {
             val f3 = frame(3.0)
             mmr.release()
             // First clip: blue footage inside the ellipse mask, black outside it (corner).
-            val inside = f1.getPixel(100, 250)
+            val inside = f1.getPixel(320, 120)  // inside the default video mask (ellipse ~192x108 radii), clear of the square
             assertTrue("inside mask should be blue: ${Integer.toHexString(inside)}", inside.b() > 150 && inside.r() < 90 && inside.g() < 90)
             val corner = f1.getPixel(4, 4)
             assertTrue("corner should be masked to black: ${Integer.toHexString(corner)}", corner.r() < 50 && corner.g() < 50 && corner.b() < 50)
             // Second clip: invert effect turns blue into yellow.
-            val inverted = f3.getPixel(100, 250)
+            val inverted = f3.getPixel(320, 120)
             assertTrue("inverted should be yellow: ${Integer.toHexString(inverted)}", inverted.r() > 150 && inverted.g() > 150 && inverted.b() < 100)
             // Title is visible near the top centre (white text pixels).
             var white = 0

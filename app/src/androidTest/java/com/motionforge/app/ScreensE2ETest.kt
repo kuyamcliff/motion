@@ -38,6 +38,7 @@ import java.io.File
 @RunWith(AndroidJUnit4::class)
 class ScreensE2ETest {
     @get:Rule val compose = createEmptyComposeRule()
+    @get:Rule val artifacts = FailureArtifacts()
     private lateinit var scenario: ActivityScenario<MainActivity>
     private lateinit var app: AppState
     private val name = "Screens ${System.nanoTime() % 1_000_000}"
@@ -65,8 +66,9 @@ class ScreensE2ETest {
     private fun waitFor(m: androidx.compose.ui.test.SemanticsMatcher) = compose.waitUntil(timeout) { nodesExist(m) }
     private fun waitText(t: String) = waitFor(hasText(t))
     private fun waitDesc(d: String) = waitFor(hasContentDescription(d, substring = true))
-    private fun poll(what: String, cond: () -> Boolean) = compose.waitUntil(timeout) { try { cond() } catch (e: Exception) { false } }.also {
-        assertTrue(what, cond())
+    private fun poll(what: String, ms: Long = timeout, detail: () -> String = { "" }, cond: () -> Boolean) {
+        try { compose.waitUntil(ms) { try { cond() } catch (e: Exception) { false } } }
+        catch (e: Throwable) { throw AssertionError("$what: not reached within $ms ms. ${detail()}", e) }
     }
 
     private fun SemanticsNodeInteraction.scrollClick() {
@@ -228,7 +230,9 @@ class ScreensE2ETest {
         compose.runOnIdle { app.editor.addLayer("solid") }
         tapDesc("Command palette")
         compose.onNode(hasContentDescription("Command search")).performTextInput("Add null")
-        tap("Add null")
+        // The search field also contains "Add null": tap the command row, not the field.
+        waitFor(hasText("Add null") and !hasSetTextAction())
+        compose.onAllNodes(hasText("Add null") and !hasSetTextAction()).onFirst().performClick()
         poll("null via palette") { layers().any { it.optString("type") == "null" } }
         selectFirst("solid")
         compose.runOnIdle { app.editor.playhead = 1.0 }
@@ -289,14 +293,19 @@ class ScreensE2ETest {
         tap("360p")
         compose.onNode(hasText(name) and hasSetTextAction()).performTextReplacement("ui-gif-$projectId")
         tapDesc("Start export")
-        poll("gif done") { ExportQueue.jobs.any { it.name == "ui-gif-$projectId" && it.status in setOf("done", "failed") } }
+        // Exports render every frame; a software-emulated device needs minutes, a phone seconds.
+        poll("gif done", 15 * 60_000L, { ExportQueue.jobs.joinToString { "${it.name}:${it.status}:${(it.progress * 100).toInt()}%:${it.error}" } }) {
+            ExportQueue.jobs.any { it.name == "ui-gif-$projectId" && it.status in setOf("done", "failed") }
+        }
         val gif = ExportQueue.jobs.first { it.name == "ui-gif-$projectId" }
         assertEquals(gif.error, "done", gif.status)
         assertTrue(File(gif.outPath).length() > 1000)
         tap("MP4 video")
         compose.onNode(hasText("ui-gif-$projectId") and hasSetTextAction()).performTextReplacement("ui-mp4-$projectId")
         tapDesc("Start export")
-        poll("mp4 done") { ExportQueue.jobs.any { it.name == "ui-mp4-$projectId" && it.status in setOf("done", "failed") } }
+        poll("mp4 done", 15 * 60_000L, { ExportQueue.jobs.joinToString { "${it.name}:${it.status}:${(it.progress * 100).toInt()}%:${it.error}" } }) {
+            ExportQueue.jobs.any { it.name == "ui-mp4-$projectId" && it.status in setOf("done", "failed") }
+        }
         val mp4 = ExportQueue.jobs.first { it.name == "ui-mp4-$projectId" }
         assertEquals(mp4.error, "done", mp4.status)
         assertTrue(mp4.result.obj("validation").optBoolean("ok"))
@@ -321,6 +330,7 @@ class ScreensE2ETest {
 
     @Test
     fun homeScreens_fontsModelsSettingsDevCenter() {
+        Settings.favoriteFonts = emptySet()  // state persists across runs; start from a known state
         waitDesc("Fonts")
         tapDesc("Fonts")
         waitText("DejaVuSans")

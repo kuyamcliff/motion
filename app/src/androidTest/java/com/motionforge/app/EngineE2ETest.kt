@@ -32,6 +32,7 @@ import java.io.File
  */
 @RunWith(AndroidJUnit4::class)
 class EngineE2ETest {
+    @get:org.junit.Rule val artifacts = FailureArtifacts()
     private val ctx get() = InstrumentationRegistry.getInstrumentation().targetContext
     private lateinit var st: EditorState
     private var projectId = ""

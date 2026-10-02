@@ -30,6 +30,7 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class UiE2ETest {
     @get:Rule val compose = createEmptyComposeRule()
+    @get:Rule val artifacts = FailureArtifacts()
     private var scenario: ActivityScenario<MainActivity>? = null
     private val name = "UI Test ${System.currentTimeMillis() % 100000}"
     private val timeout = 60_000L

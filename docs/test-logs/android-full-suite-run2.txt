@@ -1,0 +1,453 @@
+stable (system_server 9084)
+Performing Streamed Install
+Success
+Performing Streamed Install
+Success
+INSTRUMENTATION_STATUS: class=com.motionforge.app.CombinationsDeviceTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+com.motionforge.app.CombinationsDeviceTest:
+INSTRUMENTATION_STATUS: test=randomFeatureCombinationsSurviveRenderSaveReopen
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.CombinationsDeviceTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=randomFeatureCombinationsSurviveRenderSaveReopen
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.CombinationsDeviceTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=stress500LayersOnDevice
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.CombinationsDeviceTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=stress500LayersOnDevice
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.EngineE2ETest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+com.motionforge.app.EngineE2ETest:
+INSTRUMENTATION_STATUS: test=editUndoRedoRenderAndPersist
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.EngineE2ETest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=editUndoRedoRenderAndPersist
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.EngineE2ETest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=exportGifIsValidated
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.EngineE2ETest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=exportGifIsValidated
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.EngineE2ETest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=whisperCaptionsFromBundledSpeech
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.EngineE2ETest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=whisperCaptionsFromBundledSpeech
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.EngineE2ETest
+INSTRUMENTATION_STATUS: current=6
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=crashRecoveryFromJournal
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.EngineE2ETest
+INSTRUMENTATION_STATUS: current=6
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=crashRecoveryFromJournal
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.EngineE2ETest
+INSTRUMENTATION_STATUS: current=7
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=exportMp4IsValidated
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.EngineE2ETest
+INSTRUMENTATION_STATUS: current=7
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=exportMp4IsValidated
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.EngineE2ETest
+INSTRUMENTATION_STATUS: current=8
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=scriptRunsAsSingleUndoStep
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.EngineE2ETest
+INSTRUMENTATION_STATUS: current=8
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=scriptRunsAsSingleUndoStep
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.EngineE2ETest
+INSTRUMENTATION_STATUS: current=9
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=packageRoundTrip
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.EngineE2ETest
+INSTRUMENTATION_STATUS: current=9
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=packageRoundTrip
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=10
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+com.motionforge.app.ScreensE2ETest:
+INSTRUMENTATION_STATUS: test=extensions_installEnableUseUninstall
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=10
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=extensions_installEnableUseUninstall
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=11
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=addPanel_3dCameraLightParticles
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=11
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=addPanel_3dCameraLightParticles
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=12
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=textPanel_presetShadowAndPersist
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=12
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=textPanel_presetShadowAndPersist
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=13
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=captionStudio_stylesReplaceEditExport
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=13
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=captionStudio_stylesReplaceEditExport
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=14
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=exportScreen_gifAndMp4ThroughQueue
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=14
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=exportScreen_gifAndMp4ThroughQueue
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=15
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=timePanelAndCommandPalette
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=15
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=timePanelAndCommandPalette
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=16
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=effectsPanel_browserAddBypassPreset
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=16
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=effectsPanel_browserAddBypassPreset
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=17
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=scriptStudio_runExampleIsOneUndoStep
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=17
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=scriptStudio_runExampleIsOneUndoStep
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=18
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=library_presetFavoriteDuplicateDelete
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=18
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=library_presetFavoriteDuplicateDelete
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=19
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=projectInspectorAndPerformance
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=19
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stack=androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 90000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:504)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:339)
+	at com.motionforge.app.ScreensE2ETest.waitFor(ScreensE2ETest.kt:66)
+	at com.motionforge.app.ScreensE2ETest.projectInspectorAndPerformance(ScreensE2ETest.kt:322)
+
+INSTRUMENTATION_STATUS: stream=
+Error in projectInspectorAndPerformance(com.motionforge.app.ScreensE2ETest):
+androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 90000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:504)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:339)
+	at com.motionforge.app.ScreensE2ETest.waitFor(ScreensE2ETest.kt:66)
+	at com.motionforge.app.ScreensE2ETest.projectInspectorAndPerformance(ScreensE2ETest.kt:322)
+
+INSTRUMENTATION_STATUS: test=projectInspectorAndPerformance
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=20
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=homeScreens_fontsModelsSettingsDevCenter
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=20
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: font favorited: not reached within 90000 ms. 
+	at com.motionforge.app.ScreensE2ETest.poll(ScreensE2ETest.kt:71)
+	at com.motionforge.app.ScreensE2ETest.poll$default(ScreensE2ETest.kt:69)
+	at com.motionforge.app.ScreensE2ETest.homeScreens_fontsModelsSettingsDevCenter(ScreensE2ETest.kt:337)
+	... 55 trimmed
+Caused by: androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 90000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:504)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:339)
+	at com.motionforge.app.ScreensE2ETest.poll(ScreensE2ETest.kt:70)
+	... 58 more
+
+INSTRUMENTATION_STATUS: stream=
+Error in homeScreens_fontsModelsSettingsDevCenter(com.motionforge.app.ScreensE2ETest):
+java.lang.AssertionError: font favorited: not reached within 90000 ms. 
+	at com.motionforge.app.ScreensE2ETest.poll(ScreensE2ETest.kt:71)
+	at com.motionforge.app.ScreensE2ETest.poll$default(ScreensE2ETest.kt:69)
+	at com.motionforge.app.ScreensE2ETest.homeScreens_fontsModelsSettingsDevCenter(ScreensE2ETest.kt:337)
+	... 55 trimmed
+Caused by: androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 90000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:504)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:339)
+	at com.motionforge.app.ScreensE2ETest.poll(ScreensE2ETest.kt:70)
+	... 58 more
+
+INSTRUMENTATION_STATUS: test=homeScreens_fontsModelsSettingsDevCenter
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=21
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=shapePanel_itemsAndPathOperators
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=21
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=shapePanel_itemsAndPathOperators
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=22
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=keyframesPanel_graphEditorEasingExpression
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=22
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=keyframesPanel_graphEditorEasingExpression
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=23
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=mediaManager_relinkCollectRemoveUnused
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=23
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=mediaManager_relinkCollectRemoveUnused
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=24
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=masksTransitionsBehaviors
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=24
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=masksTransitionsBehaviors
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.UiE2ETest
+INSTRUMENTATION_STATUS: current=25
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+com.motionforge.app.UiE2ETest:
+INSTRUMENTATION_STATUS: test=createEditUndoPlaySave
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.UiE2ETest
+INSTRUMENTATION_STATUS: current=25
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=createEditUndoPlaySave
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.WorkflowRegressionTest
+INSTRUMENTATION_STATUS: current=26
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stream=
+com.motionforge.app.WorkflowRegressionTest:
+INSTRUMENTATION_STATUS: test=fullCreatorWorkflowEndsInVerifiedExport
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.WorkflowRegressionTest
+INSTRUMENTATION_STATUS: current=26
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=26
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: inside mask should be blue: ff000000
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.motionforge.app.WorkflowRegressionTest.fullCreatorWorkflowEndsInVerifiedExport(WorkflowRegressionTest.kt:153)
+
+INSTRUMENTATION_STATUS: stream=
+Error in fullCreatorWorkflowEndsInVerifiedExport(com.motionforge.app.WorkflowRegressionTest):
+java.lang.AssertionError: inside mask should be blue: ff000000
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.motionforge.app.WorkflowRegressionTest.fullCreatorWorkflowEndsInVerifiedExport(WorkflowRegressionTest.kt:153)
+
+INSTRUMENTATION_STATUS: test=fullCreatorWorkflowEndsInVerifiedExport
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 4,455.599
+There were 3 failures:
+1) projectInspectorAndPerformance(com.motionforge.app.ScreensE2ETest)
+androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 90000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:504)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:339)
+	at com.motionforge.app.ScreensE2ETest.waitFor(ScreensE2ETest.kt:66)
+	at com.motionforge.app.ScreensE2ETest.projectInspectorAndPerformance(ScreensE2ETest.kt:322)
+2) homeScreens_fontsModelsSettingsDevCenter(com.motionforge.app.ScreensE2ETest)
+java.lang.AssertionError: font favorited: not reached within 90000 ms. 
+	at com.motionforge.app.ScreensE2ETest.poll(ScreensE2ETest.kt:71)
+	at com.motionforge.app.ScreensE2ETest.poll$default(ScreensE2ETest.kt:69)
+	at com.motionforge.app.ScreensE2ETest.homeScreens_fontsModelsSettingsDevCenter(ScreensE2ETest.kt:337)
+	... 55 trimmed
+Caused by: androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 90000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:504)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:339)
+	at com.motionforge.app.ScreensE2ETest.poll(ScreensE2ETest.kt:70)
+	... 58 more
+3) fullCreatorWorkflowEndsInVerifiedExport(com.motionforge.app.WorkflowRegressionTest)
+java.lang.AssertionError: inside mask should be blue: ff000000
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.motionforge.app.WorkflowRegressionTest.fullCreatorWorkflowEndsInVerifiedExport(WorkflowRegressionTest.kt:153)
+
+FAILURES!!!
+Tests run: 26,  Failures: 3
+
+
+INSTRUMENTATION_CODE: -1

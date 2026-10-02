@@ -24,5 +24,6 @@ stamp=$(date +%Y%m%d-%H%M%S)
 adb logcat -c || true
 adb shell am instrument "${args[@]}" com.motionforge.mobile.test/androidx.test.runner.AndroidJUnitRunner | tee "$OUT/instrument-$stamp.txt"
 adb logcat -d > "$OUT/logcat-$stamp.txt" 2>/dev/null || true
+mkdir -p "$OUT/failures-$stamp" && adb exec-out run-as com.motionforge.mobile tar c files/test-failures 2>/dev/null | tar x -C "$OUT/failures-$stamp" 2>/dev/null; adb shell run-as com.motionforge.mobile rm -rf files/test-failures >/dev/null 2>&1
 adb shell screencap -p /sdcard/last.png && adb pull /sdcard/last.png "$OUT/screen-$stamp.png" >/dev/null 2>&1 || true
 grep -q "^OK (" "$OUT/instrument-$stamp.txt"

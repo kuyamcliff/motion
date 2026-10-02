@@ -483,8 +483,9 @@ fun ExtensionsScreen(app: AppState) {
                 Text("v${e.optString("version")} • ${e.optString("author")}", fontSize = 12.sp, color = TextDim)
                 Text(e.optString("description"), fontSize = 13.sp)
                 Text("Permissions: " + e.arr("permissions").strings().joinToString().ifEmpty { "none" }, fontSize = 12.sp, color = TextDim)
-                Row {
-                    LabeledSwitch("Enabled", e.optBoolean("_enabled")) { NativeBridge.call("setExtensionEnabled", jo("id" to id, "enabled" to it)); app.editor.reloadRegistries(); refresh++ }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // weight(): LabeledSwitch fills its width and would otherwise push Uninstall off-screen.
+                    Box(Modifier.weight(1f)) { LabeledSwitch("Enabled", e.optBoolean("_enabled")) { NativeBridge.call("setExtensionEnabled", jo("id" to id, "enabled" to it)); app.editor.reloadRegistries(); refresh++ } }
                     TextButton(onClick = { NativeBridge.call("uninstallExtension", jo("id" to id)); app.editor.reloadRegistries(); refresh++ }) { Text("Uninstall") }
                 }
             }

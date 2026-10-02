@@ -125,14 +125,18 @@ fun EditorScreen(app: AppState) {
                     }
                 }
             } else {
-                PreviewPane(app, ui, Modifier.weight(if (ui.tab == InspectorTab.None) 1f else 0.8f).fillMaxWidth())
+                // Phone layout, in priority order: Preview → Timeline → Properties → Tools (bottom, thumb reach).
+                // Opening properties keeps a compact timeline so the edit context never disappears.
+                val panelOpen = ui.tab != InspectorTab.None
+                PreviewPane(app, ui, Modifier.weight(if (panelOpen) 0.75f else 1f).fillMaxWidth())
                 Transport(st, player, ui)
-                ContextToolbar(app, ui)
-                if (ui.tab != InspectorTab.None) {
+                if (panelOpen) {
+                    Timeline(app, ui, Modifier.height(fullHeight * 0.16f).fillMaxWidth())
                     Column(Modifier.weight(1f).fillMaxWidth().background(Panel)) { InspectorPanel(app, ui) }
                 } else {
                     Timeline(app, ui, Modifier.weight(0.7f).fillMaxWidth())
                 }
+                ContextToolbar(app, ui)
             }
         }
     }

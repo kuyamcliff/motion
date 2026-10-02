@@ -23,6 +23,7 @@ import kotlin.random.Random
  */
 @RunWith(AndroidJUnit4::class)
 class CombinationsDeviceTest {
+    @get:org.junit.Rule val artifacts = FailureArtifacts()
     private val ctx get() = InstrumentationRegistry.getInstrumentation().targetContext
 
     private fun features(st: EditorState, rnd: Random): List<Pair<String, () -> Unit>> {
