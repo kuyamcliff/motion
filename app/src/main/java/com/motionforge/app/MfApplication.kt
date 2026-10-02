@@ -22,7 +22,7 @@ class MfApplication : Application() {
             "fontsDir" to File(filesDir, "fonts").absolutePath,
             "modelsDir" to File(filesDir, "models").absolutePath,
             "bundledFontsDir" to File(filesDir, "bundled_fonts").absolutePath,
-            "threads" to Runtime.getRuntime().availableProcessors().coerceIn(1, 8),
+            "threads" to (Runtime.getRuntime().availableProcessors() - 1).coerceIn(1, 8),  // keep a core free for the UI thread
             "autosaveInterval" to Settings.autosaveSeconds.toDouble(),
             "developer" to Settings.developerMode,
         )

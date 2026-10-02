@@ -11,6 +11,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.UiDevice
 import com.motionforge.app.engine.NativeBridge
 import com.motionforge.app.engine.arr
 import com.motionforge.app.engine.jo
@@ -47,10 +49,21 @@ class UiE2ETest {
     }
 
     private fun waitDesc(prefix: String) = compose.waitUntil(timeout) {
-        compose.onAllNodes(hasContentDescription(prefix, substring = true)).fetchSemanticsNodes().isNotEmpty()
+        // Tolerate a momentary absence of the window (e.g. System UI restarting on a slow emulator).
+        try { compose.onAllNodes(hasContentDescription(prefix, substring = true)).fetchSemanticsNodes().isNotEmpty() } catch (e: IllegalStateException) { false }
     }
 
-    private fun waitText(t: String) = compose.waitUntil(timeout) { compose.onAllNodesWithText(t, substring = true).fetchSemanticsNodes().isNotEmpty() }
+    private fun poll(cond: () -> Boolean) {
+        val end = System.currentTimeMillis() + timeout
+        while (!cond()) {
+            if (System.currentTimeMillis() > end) throw AssertionError("condition not met within $timeout ms")
+            Thread.sleep(100)
+        }
+    }
+
+    private fun waitText(t: String) = compose.waitUntil(timeout) {
+        try { compose.onAllNodesWithText(t, substring = true).fetchSemanticsNodes().isNotEmpty() } catch (e: IllegalStateException) { false }
+    }
 
     @Test
     fun createEditUndoPlaySave() {
@@ -85,12 +98,14 @@ class UiE2ETest {
         compose.onNodeWithContentDescription("Next frame").performClick()
         compose.waitUntil(timeout) { Math.abs(app.editor.playhead - before - 1.0 / app.editor.fps) < 1e-6 }
 
-        // Play then pause; the playhead advances while playing.
-        compose.onNodeWithContentDescription("Play").performClick()
-        waitDesc("Pause")
+        // Play then pause; the playhead advances while playing. Compose is never idle during playback
+        // (a new frame every tick), so this phase polls app state and pauses with a key press.
         val t0 = app.editor.playhead
-        compose.waitUntil(timeout) { app.editor.playhead > t0 }
-        compose.onNodeWithContentDescription("Pause").performClick()
+        compose.onNodeWithContentDescription("Play").performClick()
+        poll { app.player?.playing == true && app.editor.playhead > t0 }
+        // Pause with the Space shortcut (hardware keyboard path through MainActivity.dispatchKeyEvent).
+        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).pressKeyCode(android.view.KeyEvent.KEYCODE_SPACE)
+        poll { app.player?.playing == false }
         waitDesc("Play")
 
         // Save via menu, go back home, reopen: the layer persists.

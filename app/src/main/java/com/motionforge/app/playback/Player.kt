@@ -29,7 +29,7 @@ import java.util.concurrent.Executors
  * during playback the audio clock (AudioTrack position) drives the video time so A/V stay in sync.
  */
 class Player(private val state: EditorState) {
-    private val renderThread = Executors.newSingleThreadExecutor { r -> Thread(r, "mf-render").apply { priority = Thread.MAX_PRIORITY - 1 } }
+    private val renderThread = Executors.newSingleThreadExecutor { r -> Thread(r, "mf-render").apply { priority = Thread.NORM_PRIORITY } }  // never above the UI thread
     private val renderDispatcher = renderThread.asCoroutineDispatcher()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var playJob: Job? = null
@@ -138,7 +138,12 @@ class Player(private val state: EditorState) {
                     break
                 }
                 val fi = state.frame(t)
-                if (fi == lastShown) { delay(2); continue }
+                if (fi == lastShown) {
+                    // Sleep until the next frame boundary instead of spinning the main thread.
+                    val waitMs = (((fi + 1) * frameDur - t) / maxOf(1e-3, Math.abs(rate)) * 1000).toLong()
+                    delay(waitMs.coerceIn(1, 50))
+                    continue
+                }
                 if (lastShown >= 0 && fi > lastShown + 1) droppedFrames += fi - lastShown - 1
                 lastShown = fi
                 t = fi * frameDur
@@ -217,16 +222,23 @@ class Player(private val state: EditorState) {
         audioTrack = track
         audioStartFrames = 0
         track.play()
+        // The writer coroutine owns the track: it is released only after the last write returns,
+        // so stopping playback can never free the native AudioTrack under a blocked write().
         audioJob = scope.launch(Dispatchers.IO) {
             val chunk = 2048
             val buf = FloatArray(chunk * 2)
             var t = t0
-            while (isActive && playing) {
-                val peak = NativeBridge.nativeMixAudio(t, chunk, buf, sampleRate)
-                meterPeak = peak
-                val n = track.write(buf, 0, buf.size, AudioTrack.WRITE_BLOCKING)
-                if (n < 0) break
-                t += chunk.toDouble() / sampleRate
+            try {
+                while (isActive && playing && audioTrack === track) {
+                    val peak = NativeBridge.nativeMixAudio(t, chunk, buf, sampleRate)
+                    meterPeak = peak
+                    val n = try { track.write(buf, 0, buf.size, AudioTrack.WRITE_BLOCKING) } catch (e: IllegalStateException) { -1 }
+                    if (n < 0) break
+                    t += chunk.toDouble() / sampleRate
+                }
+            } finally {
+                try { track.stop() } catch (_: Exception) {}
+                track.release()
             }
         }
     }
@@ -234,18 +246,19 @@ class Player(private val state: EditorState) {
     private fun audioClock(): Double? {
         val tr = audioTrack ?: return null
         val pos = tr.playbackHeadPosition.toLong() and 0xffffffffL
-        if (pos <= 0) return 0.0
+        // Until the device reports a moving playback head, follow the wall clock.
+        if (pos <= 0) return null
         return pos.toDouble() / sampleRate
     }
 
     private fun stopAudio() {
-        audioJob?.cancel()
+        val job = audioJob
+        val track = audioTrack
         audioJob = null
-        audioTrack?.let {
-            try { it.pause(); it.flush(); it.stop() } catch (_: Exception) {}
-            it.release()
-        }
         audioTrack = null
+        // Pause + flush unblocks a pending write(); the writer coroutine then stops and releases the track.
+        try { track?.pause(); track?.flush() } catch (_: Exception) {}
+        if (job != null) job.cancel() else track?.release()
         meterPeak = 0f
     }
 

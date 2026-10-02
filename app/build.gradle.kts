@@ -123,3 +123,4 @@ dependencies {
     androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 }
+tasks.matching { it.name.contains("Lint", ignoreCase = true) }.configureEach { dependsOn(prepareBundledAssets) }

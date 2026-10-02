@@ -59,6 +59,14 @@ object Clipboard {
 @Composable
 fun InspectorPanel(app: AppState, ui: EditorUi) {
     val st = app.editor
+    // Property editors evaluate values at the playhead; during playback that would re-evaluate every frame and
+    // starve the UI thread, so the inspector pauses (like a RAM preview) and resumes on pause.
+    if (app.player?.playing == true) {
+        Column(Modifier.fillMaxSize().padding(12.dp)) {
+            Text("Playing… pause to edit properties.", color = TextDim)
+        }
+        return
+    }
     val layer = st.selectedLayer
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 6.dp)) {
         Text(ui.tab.name.let { if (it == "ThreeD") "3D" else it } + (layer?.let { " — " + it.optString("name") } ?: ""), fontWeight = FontWeight.Bold)
