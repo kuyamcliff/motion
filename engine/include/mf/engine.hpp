@@ -42,6 +42,8 @@ class Engine {
     std::string createProjectFromDoc(const json& doc, std::string* err = nullptr);
     bool openProject(const std::string& id, std::string& err, bool recover = false);
     void closeProject();  // saves, removes session lock
+    // Test hook: forget the open project without saving or removing the session lock (as if the process died).
+    void abandonProjectForTesting() { projectId_.clear(); }
     bool isOpen() const { return !projectId_.empty(); }
     const std::string& projectId() const { return projectId_; }
     Document& doc() { return doc_; }

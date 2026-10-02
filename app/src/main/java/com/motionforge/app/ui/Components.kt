@@ -184,7 +184,7 @@ fun NumberRow(label: String, value: Double, min: Double, max: Double, animated: 
             modifier = Modifier.semantics { contentDescription = "$label slider" },
         )
     }
-    if (edit) TextInputDialog(label, fmt(value), "Value") { s -> s.toDoubleOrNull()?.let(onCommit) }
+    if (edit) TextInputDialog(label, fmt(value), "Value", onDismiss = { edit = false }) { s -> s.toDoubleOrNull()?.let(onCommit) }
     if (showHelp && help != null) InfoDialog(label, help) { showHelp = false }
 }
 

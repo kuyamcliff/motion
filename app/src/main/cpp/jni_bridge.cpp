@@ -313,6 +313,7 @@ json call(const std::string& m, const json& a) {
         return E.openProject(a.value("id", std::string()), e, a.value("recover", false)) ? okj() : err(e);
     }
     if (m == "closeProject") { E.closeProject(); return okj(); }
+    if (m == "simulateCrash") { E.abandonProjectForTesting(); return okj(); }
     if (m == "recoveryInfo") {
         RecoveryInfo r = E.store().checkRecovery(a.value("id", std::string()));
         return okj({{"available", r.available}, {"abnormalExit", r.abnormalExit}, {"entries", r.journalEntries}, {"checkpointTime", r.checkpointTime},
@@ -388,6 +389,37 @@ json call(const std::string& m, const json& a) {
             if (P) out[p.get<std::string>()] = (P->is_object() && (P->contains("v") || P->contains("k"))) ? evalRaw(*P, lt).toJson() : *P;
         }
         return okj({{"values", out}});
+    }
+    if (m == "sampleProp") {
+        // Sample one property across comp time for the graph editor: {layer, path, t0, t1, n}
+        auto snap = E.snapshot();
+        const json* comp = activeComp(*snap);
+        const json* L = comp ? findLayer(*comp, a.value("layer", "")) : nullptr;
+        if (!L) return err("Layer not found.");
+        const json* P = resolvePath(*L, a.value("path", std::string()));
+        if (!P || !P->is_object()) return err("Property not found.");
+        int n = std::clamp(a.value("n", 100), 2, 1000);
+        double t0 = a.value("t0", 0.0), t1 = a.value("t1", 1.0);
+        json vals = json::array();
+        for (int i = 0; i < n; ++i) {
+            double t = t0 + (t1 - t0) * i / (n - 1);
+            vals.push_back(evalRaw(*P, layerLocalTime(*L, t)).toJson());
+        }
+        return okj({{"values", vals}});
+    }
+    if (m == "copyKeyframes") {
+        auto snap = E.snapshot();
+        const json* comp = activeComp(*snap);
+        const json* L = comp ? findLayer(*comp, a.value("layer", "")) : nullptr;
+        if (!L) return err("Layer not found.");
+        const json* P = resolvePath(*L, a.value("path", std::string()));
+        if (!P || !P->is_object()) return err("Property not found.");
+        double t0 = layerLocalTime(*L, a.value("t0", 0.0)), t1 = layerLocalTime(*L, a.value("t1", 1e9));
+        json clip = keyframesClipboard(*P, t0, t1);
+        if (jarr(clip, "k").empty()) return err("No keyframes in that range to copy.");
+        clip["t0"] = clip["k"].front().value("t", 0.0);
+        clip["t1"] = clip["k"].back().value("t", 0.0);
+        return okj({{"clip", clip}});
     }
     if (m == "compToLayer") {
         auto snap = E.snapshot();

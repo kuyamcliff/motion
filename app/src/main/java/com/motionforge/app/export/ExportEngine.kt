@@ -147,19 +147,27 @@ class ExportEngine(private val duration: Double, private val compW: Int, private
         val frames = Math.max(1, Math.floor((s.t1 - s.t0) * s.fps + 1e-6).toInt())
         val info = MediaCodec.BufferInfo()
         val wantTracks = (if (videoOn) 1 else 0) + (if (audioOn) 1 else 0)
+        val pendingSamples = ArrayList<Triple<String, ByteBuffer, MediaCodec.BufferInfo>>()
         fun tryStartMuxer() {
             if (muxerStarted || pendingFormats.size < wantTracks) return
             pendingFormats["video"]?.let { videoTrack = muxer.addTrack(it) }
             pendingFormats["audio"]?.let { audioTrack = muxer.addTrack(it) }
             muxer.start()
             muxerStarted = true
+            // Flush samples produced before every track's format was known.
+            for ((k, b, i) in pendingSamples) muxer.writeSampleData(if (k == "video") videoTrack else audioTrack, b, i)
+            pendingSamples.clear()
         }
-        val pendingSamples = ArrayList<Triple<String, ByteBuffer, MediaCodec.BufferInfo>>()
         fun drain(codec: MediaCodec, kind: String, endOfStream: Boolean) {
+            var idleWaits = 0
             while (true) {
                 val idx = codec.dequeueOutputBuffer(info, if (endOfStream) 10_000 else 0)
                 when {
-                    idx == MediaCodec.INFO_TRY_AGAIN_LATER -> { if (!endOfStream) return }
+                    idx == MediaCodec.INFO_TRY_AGAIN_LATER -> {
+                        if (!endOfStream) return
+                        // Some encoders never emit an end-of-stream buffer; give up after ~5 s of silence.
+                        if (++idleWaits > 500) return
+                    }
                     idx == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> { pendingFormats[kind] = codec.outputFormat; tryStartMuxer() }
                     idx >= 0 -> {
                         val buf = codec.getOutputBuffer(idx)!!
@@ -167,9 +175,6 @@ class ExportEngine(private val duration: Double, private val compW: Int, private
                         if (info.size > 0) {
                             buf.position(info.offset); buf.limit(info.offset + info.size)
                             if (muxerStarted) {
-                                // Flush samples queued before the muxer could start.
-                                for ((k, b, i) in pendingSamples) muxer.writeSampleData(if (k == "video") videoTrack else audioTrack, b, i)
-                                pendingSamples.clear()
                                 muxer.writeSampleData(if (kind == "video") videoTrack else audioTrack, buf, info)
                             } else {
                                 val copy = ByteBuffer.allocateDirect(info.size); copy.put(buf); copy.flip()

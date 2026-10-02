@@ -86,7 +86,7 @@ object Importer {
             if (o.outWidth <= 0) throw IllegalArgumentException("Unsupported or damaged image.")
             var w = o.outWidth
             var h = o.outHeight
-            val rot = try { MediaBridge.openStream(src)?.use { android.media.ExifInterface(it).rotationDegrees } ?: 0 } catch (e: Exception) { 0 }
+            val rot = try { MediaBridge.openStream(src)?.use { androidx.exifinterface.media.ExifInterface(it).rotationDegrees } ?: 0 } catch (e: Exception) { 0 }
             if (rot == 90 || rot == 270) { val t = w; w = h; h = t }
             asset.put("width", w); asset.put("height", h)
             return asset

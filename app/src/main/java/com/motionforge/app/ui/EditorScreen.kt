@@ -108,6 +108,7 @@ fun EditorScreen(app: AppState) {
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val wide = maxWidth > 700.dp
+        val fullHeight = maxHeight
         Column(Modifier.fillMaxSize()) {
             EditorTopBar(app, ui)
             if (wide) {
@@ -116,7 +117,7 @@ fun EditorScreen(app: AppState) {
                         PreviewPane(app, ui, Modifier.weight(1f).fillMaxWidth())
                         Transport(st, player, ui)
                         ContextToolbar(app, ui)
-                        Timeline(app, ui, Modifier.height(maxHeight * 0.32f).fillMaxWidth())
+                        Timeline(app, ui, Modifier.height(fullHeight * 0.32f).fillMaxWidth())
                     }
                     if (ui.tab != InspectorTab.None) {
                         Column(Modifier.width(360.dp).fillMaxHeight().background(Panel)) { InspectorPanel(app, ui) }
