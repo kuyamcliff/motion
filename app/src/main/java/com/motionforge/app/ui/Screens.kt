@@ -766,6 +766,7 @@ fun ModelsScreen(app: AppState) {
 }
 
 // ====================================================================== Settings
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(app: AppState) {
     var tick by remember { mutableIntStateOf(0) }
@@ -794,7 +795,7 @@ fun SettingsScreen(app: AppState) {
             SectionTitle("Developer")
             LabeledSwitch("Developer mode (allow unsigned extensions)", Settings.developerMode) { Settings.developerMode = it; tick++ }
             if (Settings.signingPublic.isNotEmpty()) Text("My publisher key: ${Settings.signingPublic.take(24)}…", fontSize = 12.sp, fontFamily = FontFamily.Monospace)
-            Row {
+            FlowRow {
                 Chip(if (Settings.signingPublic.isEmpty()) "Create publisher key" else "Replace publisher key") { keyDialog = true }
                 Chip("Trust a publisher key") { trustKey = true }
             }
@@ -824,6 +825,7 @@ fun SettingsScreen(app: AppState) {
 private fun key(k: Any, content: @Composable () -> Unit) = androidx.compose.runtime.key(k) { content() }
 
 // ====================================================================== Developer Center
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DevCenterScreen(app: AppState) {
     var section by remember { mutableStateOf("Overview") }
@@ -832,7 +834,8 @@ fun DevCenterScreen(app: AppState) {
     var scenario by remember { mutableStateOf("CREATE project 640x360 30fps duration 2\nADD text \"Hello\"\nEXPECT layers == 1\nUNDO\nEXPECT layers == 0\nREDO\nEXPECT layers == 1\nRENDER frame.png 0.5\nSAVE\nREOPEN\nEXPECT layers == 1\n") }
     var scenarioOut by remember { mutableStateOf("") }
     ScreenScaffold(app, "Developer Center") {
-        Row(Modifier.fillMaxWidth()) { listOf("Overview", "Operations", "Effects", "Scripting", "Expressions", "Formats", "Scenarios").forEach { s -> Chip(s, section == s) { section = s } } }
+        // FlowRow: seven tabs do not fit a phone width; a plain Row clipped "Scenarios" off-screen.
+        FlowRow(Modifier.fillMaxWidth()) { listOf("Overview", "Operations", "Effects", "Scripting", "Expressions", "Formats", "Scenarios").forEach { s -> Chip(s, section == s) { section = s } } }
         Gap()
         when (section) {
             "Overview" -> DocText("""MOTIONFORGE is built from a C++ engine (project model, command/undo layer, CPU compositor, audio mixer, Whisper ASR, packages) and a Kotlin/Compose shell.

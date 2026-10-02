@@ -49,6 +49,7 @@ class CapsuleScriptDeviceTest {
             st.setProp(shape, "shape.items.0.size", listOf(50.0, 50.0), "static")
             st.playhead = 0.0; st.setProp(shape, "transform.position", listOf(60.0, 90.0, 0.0), "key")
             st.playhead = 2.0; st.setProp(shape, "transform.position", listOf(260.0, 90.0, 0.0), "key")
+            st.playhead = 0.0  // layers start at the playhead; the title must be visible at t=1
             val title = st.addLayer("text", jo("text" to "CAPSULE", "size" to 28.0))!!
             val controls = listOf(
                 jo("name" to "Title", "type" to "text", "layer" to title, "path" to "text.content"),

@@ -66,7 +66,20 @@ The Android E2E tests run on a device or emulator.
   * save
   * back to Home and reopen
 
-The verification results are in [docs/VERIFICATION.md](docs/VERIFICATION.md).
+More device suites cover the rest:
+
+* `ScreensE2ETest` clicks through every screen and inspector panel and verifies each result after reopening the project.
+* `WorkflowRegressionTest` runs a full creator workflow and pixel-inspects the exported MP4.
+* `CombinationsDeviceTest` runs feature combinations plus a 500-layer stress test.
+* `VideoLayerDeviceTest` covers decoding, compositing and re-exporting imported video.
+* `CapsuleScriptDeviceTest` covers Capsule v2 and Script API v2.
+
+On the host, `test_combo` runs hundreds of pair and random feature combinations (set `MF_COMBO_COUNT` for thousands) and the stress tests.
+
+* Cloud and CI device testing: [docs/CLOUD_ANDROID_TESTING.md](docs/CLOUD_ANDROID_TESTING.md). Scripts are in `scripts/android/`.
+* Per-feature status (WORKING_ANDROID / WORKING_ENGINE_ONLY / PARTIAL / UI_ONLY / NOT_IMPLEMENTED): [docs/FEATURE_STATUS.md](docs/FEATURE_STATUS.md).
+* GPU renderer roadmap: [docs/GPU_RENDERER_PLAN.md](docs/GPU_RENDERER_PLAN.md).
+* Verification results: [docs/VERIFICATION.md](docs/VERIFICATION.md).
 
 ## Architecture
 

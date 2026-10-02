@@ -11,6 +11,19 @@ Each feature is marked with the strongest evidence that currently exists for it:
 | **BROKEN** | Known not to work. |
 | **NOT_IMPLEMENTED** | Not built. |
 
+## Summary
+
+Device suite: 29 tests in 8 classes, all passing on the current code (see VERIFICATION.md for the final single run). Host: 59 test groups, including 300 + 3,000 combinations and 402 effect × layer pairs.
+
+Bugs found and fixed by this phase's tests:
+1. Extension effects never appeared in the effect browser, and the registry was cached for the app's lifetime.
+2. Capsule controls bound to effect parameters broke on insert, because effect IDs were re-generated.
+3. Relink in Project Inspector always failed: the new file wasn't passed.
+4. Expression errors leaked between projects (an engine-global map keyed by layer ID).
+5. The extension Uninstall button was pushed off-screen.
+6. The Developer Center Scenarios tab was clipped off-screen on phones.
+7. (Earlier in this phase) a playback AudioTrack use-after-release crash, and UI-thread starvation during playback.
+
 Test names refer to `app/src/androidTest/...` (device) and `engine/tests/...` (host). Latest results are in [VERIFICATION.md](VERIFICATION.md).
 
 ## Projects & persistence
@@ -35,7 +48,7 @@ Test names refer to `app/src/androidTest/...` (device) and `engine/tests/...` (h
 | Keyboard shortcuts | WORKING_ANDROID (Space) | UiE2ETest pauses with Space; other shortcuts not driven |
 | Split / trim / move / ripple delete | WORKING_ANDROID | WorkflowRegressionTest (trim, split), ScreensE2ETest (split) |
 | Duplicate / delete / reorder layers | WORKING_ENGINE_ONLY | combo tests |
-| Precompose | WORKING_ANDROID | CombinationsDeviceTest |
+| Precompose | WORKING_ANDROID | CombinationsDeviceTest (24/24 random combinations pass on the device) |
 | Parenting | WORKING_ENGINE_ONLY | host render + combo tests |
 | Markers | WORKING_ENGINE_ONLY | script API v2 test |
 
@@ -110,6 +123,7 @@ Test names refer to `app/src/androidTest/...` (device) and `engine/tests/...` (h
 | Feature | Status | Evidence |
 |---|---|---|
 | Import files (gallery/Files, multiple) | WORKING_ANDROID (import path) | WorkflowRegressionTest, ScreensE2ETest.mediaManager. The system picker itself isn't automated. |
+| Imported video: MediaCodec decode, composite, re-export | WORKING_ANDROID | VideoLayerDeviceTest (decoder pixels, render pixels, exported pixels) |
 | Import folder | UI_ONLY | Needs the system folder picker |
 | Media manager: usage, unused, metadata | WORKING_ANDROID | ScreensE2ETest.mediaManager |
 | Replace / relink media | WORKING_ANDROID | same (**bug fixed this phase:** Relink in Project Inspector always failed) |
@@ -123,12 +137,12 @@ Test names refer to `app/src/androidTest/...` (device) and `engine/tests/...` (h
 | Feature | Status | Evidence |
 |---|---|---|
 | Presets: save / favorite / duplicate / delete | WORKING_ANDROID | ScreensE2ETest.library_presetFavoriteDuplicateDelete |
-| Capsules: create / insert | WORKING_ENGINE_ONLY | test_capsule |
-| Capsule v2 typed controls (text, color, size, position, intensity, speed) | WORKING_ENGINE_ONLY | test_capsule (**bug fixed:** effect-bound controls broke on insert) |
-| .mfcapsule with embedded fonts + media | WORKING_ENGINE_ONLY | test_capsule |
+| Capsules: create / insert | WORKING_ANDROID | CapsuleScriptDeviceTest |
+| Capsule v2 typed controls (text, color, size, position, intensity, speed) | WORKING_ANDROID | CapsuleScriptDeviceTest (text/color/size/position/speed incl. speed-time equivalence); test_capsule (intensity). **Bug fixed:** effect-bound controls broke on insert |
+| .mfcapsule with embedded fonts + media | WORKING_ANDROID | CapsuleScriptDeviceTest (export → delete → import → insert); test_capsule (media embedding) |
 | Script Studio: run example, single undo | WORKING_ANDROID | ScreensE2ETest.scriptStudio_runExampleIsOneUndoStep |
-| Script API v2 (100+ functions), UI panels | WORKING_ENGINE_ONLY | test_script_api |
-| Extensions: install / effect in browser / disable / uninstall | WORKING_ANDROID | ScreensE2ETest.extensions_installEnableUseUninstall (**bug fixed:** extension effects never appeared) |
+| Script API v2 (100+ functions), UI panels | WORKING_ANDROID | CapsuleScriptDeviceTest.scriptApiV2…, test_script_api |
+| Extensions: install / effect in browser / disable / uninstall | WORKING_ANDROID | ScreensE2ETest.extensions_installEnableUseUninstall (**bugs fixed:** extension effects never appeared; Uninstall button was off-screen) |
 
 ## App screens
 | Feature | Status | Evidence |
@@ -136,12 +150,12 @@ Test names refer to `app/src/androidTest/...` (device) and `engine/tests/...` (h
 | Fonts screen, favorites | WORKING_ANDROID | ScreensE2ETest.homeScreens |
 | AI Models screen | WORKING_ANDROID | same |
 | Settings | WORKING_ANDROID | same |
-| Developer Center + scenario runner | WORKING_ANDROID | same |
-| Project Inspector, Performance | WORKING_ANDROID | ScreensE2ETest.projectInspectorAndPerformance |
+| Developer Center + scenario runner | WORKING_ANDROID | same (**bug fixed:** Scenarios tab was clipped off-screen on phones) |
+| Project Inspector, Performance | WORKING_ANDROID | ScreensE2ETest.projectInspectorAndPerformance (**bug fixed:** expression errors from other projects leaked into diagnostics) |
 
 ## Architecture items not yet done
 | Item | Status | Notes |
 |---|---|---|
 | GPU-first renderer (GLES/Vulkan compositor, hardware buffers) | NOT_IMPLEMENTED | Rendering is a multithreaded CPU compositor. Export already uses EGL surfaces and hardware encoders. |
 | Real-phone device matrix | NOT_IMPLEMENTED here | Configured in CI (emulators with KVM plus an optional Firebase Test Lab job). See CLOUD_ANDROID_TESTING.md. |
-| Edit performance on very large projects | PARTIAL | Each edit copies the document. 500 layers / 2000 keyframes took ~19 s to build op by op on the host (a single batch is fast). |
+| Edit performance on very large projects | PARTIAL | Each edit copies the document. 500 layers / 2000 keyframes took ~19 s to build op by op on the host. On the device (software emulator), adding 500 layers as one batch took 7.3 s, rendering 260 visible layers at 640×360 took 8.1 s, and saving took 2.2 s. |
