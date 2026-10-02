@@ -381,8 +381,24 @@ fun ScriptStudioScreen(app: AppState) {
     var argsText by remember { mutableStateOf("{}") }
     var confirmRun by remember { mutableStateOf(false) }
     var showApi by remember { mutableStateOf(false) }
+    // A script can declare a panel of inputs (mf.ui.panel); the values are passed back in mf.args on the next run.
+    var panel by remember { mutableStateOf<JSONArray?>(null) }
+    val panelValues = remember { mutableStateOf(JSONObject()) }
+    val ctx = LocalContext.current
+    val importMedia = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris -> uris.forEach { importIntoProject(app, ctx, it) } }
+    fun handleActions(actions: JSONArray) {
+        actions.objects().forEach { a ->
+            when (a.optString("type")) {
+                "panel" -> { panel = a.obj("spec").optJSONArray("fields") ?: JSONArray(); val v = JSONObject(); panel!!.objects().forEach { f -> v.put(f.optString("name"), f.opt("default") ?: "") }; panelValues.value = v }
+                "select" -> st.selection = a.arr("layers").strings().filter { st.layer(it) != null }.toSet()
+                "importRequest" -> importMedia.launch(arrayOf("video/*", "image/*", "audio/*"))
+                "export" -> app.go(Screen.Export)
+            }
+        }
+    }
     fun run() {
         val args = try { JSONObject(argsText) } catch (e: Exception) { app.toast("Arguments must be a JSON object.", true); return }
+        panelValues.value.keys().forEach { k -> if (!args.has(k)) args.put(k, panelValues.value.opt(k)) }
         val r = NativeBridge.call("runScript", jo("name" to name, "source" to source, "permissions" to perms.toList(), "selection" to st.selection.toList(), "t" to st.playhead,
             "storage" to JSONObject(Settings.scriptStorage), "args" to args))
         val sb = StringBuilder()
@@ -395,6 +411,7 @@ fun ScriptStudioScreen(app: AppState) {
         } else sb.append("✗ ").append(r.optString("error"))
         console = sb.toString()
         st.refresh()
+        r.optJSONArray("actions")?.let { handleActions(it) }
     }
     ScreenScaffold(app, "Script Studio", actions = { TextButton(onClick = { showApi = true }) { Text("API") } }) {
         SmallLabel("Scripts run in a sandbox (QuickJS) with only the permissions you grant. Each run is a single undoable step.")
@@ -403,6 +420,20 @@ fun ScriptStudioScreen(app: AppState) {
         OutlinedTextField(source, { source = it }, modifier = Modifier.fillMaxWidth().height(260.dp).semantics { contentDescription = "Script source" },
             textStyle = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color.White))
         OutlinedTextField(argsText, { argsText = it }, label = { Text("Arguments (mf.args JSON)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        panel?.let { fields ->
+            SectionTitle("Script panel", "Inputs declared by the script with mf.ui.panel(). Run again to use them.")
+            fields.objects().forEach { f ->
+                val n = f.optString("name")
+                val label = f.optString("label", n)
+                when (f.optString("type")) {
+                    "number" -> NumberRow(label, panelValues.value.optDouble(n, 0.0), f.optDouble("min", 0.0), f.optDouble("max", 100.0), onPreview = {}) { v -> panelValues.value = JSONObject(panelValues.value.toString()).put(n, v) }
+                    "bool" -> LabeledSwitch(label, panelValues.value.optBoolean(n)) { v -> panelValues.value = JSONObject(panelValues.value.toString()).put(n, v) }
+                    "color" -> ColorRow(label, panelValues.value.optJSONArray(n).toDoubles(4)) { v -> panelValues.value = JSONObject(panelValues.value.toString()).put(n, JSONArray(v.toList())) }
+                    "choice" -> EnumPicker(label, panelValues.value.optString(n), f.arr("options").strings().map { it to it }) { v -> panelValues.value = JSONObject(panelValues.value.toString()).put(n, v) }
+                    else -> OutlinedTextField(panelValues.value.optString(n), { v -> panelValues.value = JSONObject(panelValues.value.toString()).put(n, v) }, label = { Text(label) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                }
+            }
+        }
         SectionTitle("Permissions")
         FlowRow { st.registries.arr("permissions").strings().forEach { p -> Chip(p, p in perms) { perms = if (p in perms) perms - p else perms + p } } }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -419,9 +450,10 @@ fun ScriptStudioScreen(app: AppState) {
     }
     if (confirmRun) ConfirmDialog("Allow script to modify the project?", "\"$name\" requests: ${perms.joinToString()}. You can undo it in one step.", "Run",
         onDismiss = { confirmRun = false }) { confirmRun = false; run() }
-    if (showApi) InfoDialog("Script API v${api.optInt("apiVersion")}", api.arr("globals").objects().joinToString("\n\n") { g ->
-        "${g.optString("name")} ${g.optString("signature")}\n  ${g.optString("doc")}" + (g.optString("permission").takeIf { it.isNotEmpty() }?.let { "  [requires $it]" } ?: "")
-    }) { showApi = false }
+    if (showApi) InfoDialog("Script API v${api.optInt("apiVersion")} (${api.arr("functions").length()} functions)",
+        api.arr("functions").strings().joinToString("\n") + "\n\n" + api.arr("globals").objects().joinToString("\n\n") { g ->
+            "${g.optString("name")} ${g.optString("signature")}\n  ${g.optString("doc")}" + (g.optString("permission").takeIf { it.isNotEmpty() }?.let { "  [requires $it]" } ?: "")
+        }) { showApi = false }
 }
 
 // ====================================================================== Extensions
@@ -452,8 +484,8 @@ fun ExtensionsScreen(app: AppState) {
                 Text(e.optString("description"), fontSize = 13.sp)
                 Text("Permissions: " + e.arr("permissions").strings().joinToString().ifEmpty { "none" }, fontSize = 12.sp, color = TextDim)
                 Row {
-                    LabeledSwitch("Enabled", e.optBoolean("_enabled")) { NativeBridge.call("setExtensionEnabled", jo("id" to id, "enabled" to it)); refresh++ }
-                    TextButton(onClick = { NativeBridge.call("uninstallExtension", jo("id" to id)); refresh++ }) { Text("Uninstall") }
+                    LabeledSwitch("Enabled", e.optBoolean("_enabled")) { NativeBridge.call("setExtensionEnabled", jo("id" to id, "enabled" to it)); app.editor.reloadRegistries(); refresh++ }
+                    TextButton(onClick = { NativeBridge.call("uninstallExtension", jo("id" to id)); app.editor.reloadRegistries(); refresh++ }) { Text("Uninstall") }
                 }
             }
         }
@@ -471,6 +503,7 @@ fun ExtensionsScreen(app: AppState) {
         }, confirmButton = { TextButton(onClick = {
             val r = NativeBridge.call("installExtension", jo("path" to path, "confirmed" to true, "devMode" to Settings.developerMode, "trustedKeys" to Settings.trustedKeys.toList()))
             app.toast(if (r.optBoolean("ok")) "Extension installed." else r.optString("error"), !r.optBoolean("ok"))
+            app.editor.reloadRegistries()
             pending = null; refresh++
         }) { Text("Install") } }, dismissButton = { TextButton(onClick = { pending = null }) { Text("Cancel") } })
     }
@@ -494,7 +527,17 @@ fun LibraryScreen(app: AppState) {
         val item = exportItem ?: return@rememberLauncherForActivityResult
         if (uri != null) {
             val tmp = File(ctx.cacheDir, "lib-export.tmp")
-            val r = NativeBridge.call("exportJsonPackage", jo("path" to tmp.absolutePath, "kind" to item.first, "content" to item.second,
+            val r = if (item.first == "capsule") {
+                // Capsules embed their fonts and media; content:// media is copied to a local file first.
+                val files = JSONObject()
+                item.second.optJSONArray("assets")?.objects()?.forEach { a ->
+                    val src = a.optString("uri").ifEmpty { a.optString("path") }
+                    if (src.startsWith("content:") || src.startsWith("file:"))
+                        Importer.copyToLocal(ctx, Uri.parse(src), "capsule-export")?.let { files.put(a.optString("id"), it.absolutePath) }
+                }
+                NativeBridge.call("exportCapsulePackage", jo("path" to tmp.absolutePath, "capsule" to item.second, "assetFiles" to files, "signingKey" to Settings.signingSecret))
+                    .also { res -> res.optJSONArray("warnings")?.strings()?.forEach { w -> app.toast(w) } }
+            } else NativeBridge.call("exportJsonPackage", jo("path" to tmp.absolutePath, "kind" to item.first, "content" to item.second,
                 "manifest" to jo("name" to item.second.optString("name")), "signingKey" to Settings.signingSecret))
             if (r.optBoolean("ok")) { ctx.contentResolver.openOutputStream(uri)?.use { o -> tmp.inputStream().use { it.copyTo(o) } }; app.toast("Exported.") } else app.toast(r.optString("error"), true)
             tmp.delete()
@@ -579,6 +622,13 @@ fun handlePackageImport(app: AppState, ctx: android.content.Context, uri: Uri, k
         Importer.Kind.PROJECT -> { app.toast("Open project packages from the Home screen (Import Package).", true); return }
         else -> { app.toast("Unsupported file type: ${f.name}", true); return }
     }
+    if (pkgKind == "capsule") {
+        val c = NativeBridge.call("importCapsulePackage", jo("path" to f.absolutePath))
+        if (!c.optBoolean("ok")) return app.toast("Import failed: " + c.optString("error"), true)
+        app.toast("Capsule '${c.obj("capsule").optString("name")}' added (${c.optInt("fonts")} fonts). Insert it from + Layer › Capsules.")
+        c.arr("warnings").strings().forEach { app.toast(it) }
+        return
+    }
     val r = NativeBridge.call("importJsonPackage", jo("path" to f.absolutePath, "kind" to pkgKind, "devMode" to true, "trustedKeys" to Settings.trustedKeys.toList()))
     if (!r.optBoolean("ok")) return app.toast("Import failed: " + r.optString("error"), true)
     val content = r.obj("content")
@@ -588,7 +638,6 @@ fun handlePackageImport(app: AppState, ctx: android.content.Context, uri: Uri, k
             File(ctx.filesDir, "mf/presets/" + content.optString("name", "Imported").replace(Regex("[^A-Za-z0-9 _-]"), "_") + ".json").writeText(content.toString())
             app.toast("Preset '${content.optString("name")}' added to the library.")
         }
-        "capsule" -> { NativeBridge.call("saveCapsuleJson", jo("capsule" to content)); app.toast("Capsule '${content.optString("name")}' added. Insert it from + Layer › Capsules.") }
         "template" -> {
             File(ctx.filesDir, "mf/templates").mkdirs()
             File(ctx.filesDir, "mf/templates/" + content.optString("name", "Imported").replace(Regex("[^A-Za-z0-9 _-]"), "_") + ".json").writeText(content.toString())
@@ -798,7 +847,7 @@ Packages (.mforge, .mffx, .mfcapsule, .mftemplate, .mfsx, .mfext) are zip archiv
                 Text(e.optString("help") + "\nParameters: " + e.arr("params").objects().joinToString { it.optString("name") }, fontSize = 12.sp, color = TextDim)
                 Gap(4)
             }
-            "Scripting" -> DocText("Script API v${api.optInt("apiVersion")}\n\n" + api.arr("globals").objects().joinToString("\n\n") { "${it.optString("name")} ${it.optString("signature")}\n  ${it.optString("doc")}" } +
+            "Scripting" -> DocText("Script API v${api.optInt("apiVersion")}\n\n" + api.arr("functions").strings().joinToString("\n") + "\n\n" + api.arr("globals").objects().joinToString("\n\n") { "${it.optString("name")} ${it.optString("signature")}\n  ${it.optString("doc")}" } +
                 "\n\nPermissions: " + reg.arr("permissions").strings().joinToString())
             "Expressions" -> DocText("""Expressions are JavaScript evaluated per frame (QuickJS).
 

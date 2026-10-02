@@ -33,6 +33,8 @@ std::vector<std::string> effectCategories();
 void registerCompositeEffect(const std::string& type, const json& definition);
 void clearCompositeEffects();
 const json* findCompositeEffect(const std::string& type);
+// Snapshot of all registered composite (extension) effects: type -> definition.
+std::map<std::string, json> compositeEffects();
 
 // Behaviors (procedural motion modifiers) metadata.
 struct BehaviorInfo {

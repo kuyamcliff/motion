@@ -33,7 +33,10 @@ class EditorState {
     var projectId by mutableStateOf("")
         private set
 
-    val registries: JSONObject by lazy { NativeBridge.call("registries") }
+    /** Effect/behavior/transition registries. Reloaded when extensions change (they contribute effects). */
+    var registries: JSONObject by mutableStateOf(NativeBridge.call("registries"))
+        private set
+    fun reloadRegistries() { registries = NativeBridge.call("registries") }
 
     val comp: JSONObject
         get() {

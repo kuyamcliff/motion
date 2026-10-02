@@ -1,0 +1,64 @@
+    300 pair combinations, 0 failures
+PASS combo_all_feature_pairs                            2205.3 ms
+    3000 random combinations (3-8 features each), 0 failures; 37820 ops applied, 38 cleanly rejected
+PASS combo_random_feature_subsets                      68132.9 ms
+    402 effect x layer-kind combinations, 0 failures
+PASS combo_every_effect_on_every_layer_kind             1193.4 ms
+    500 layers / 2000 keyframes: build 19501 ms, half-res frame 54 ms, doc 630 KB
+PASS stress_500_layers_with_keyframes                  19573.1 ms
+    4K frame with 5 effects: 1510 ms
+PASS stress_4k_frame_and_heavy_effects                  1512.8 ms
+    8-deep nesting + 3 particle systems + 20 3D models + 2000 captions: 24 ms
+PASS stress_nested_comps_particles_3d_captions            41.1 ms
+    1000 keyframe edits on a 1 h timeline: 833 ms, undid 500 steps
+PASS stress_undo_history_and_long_timeline               902.8 ms
+PASS easing_endpoints_and_monotonic                        0.0 ms
+PASS cubic_bezier_matches_css_ease                         0.0 ms
+PASS interp_json_roundtrip                                 0.0 ms
+PASS keyframe_evaluation_scalar_vector_hold                0.0 ms
+PASS keyframe_ops_reverse_scale_distribute_clipboard       0.0 ms
+PASS document_undo_redo_branch                             0.6 ms
+PASS document_preview_commit_cancel                        0.2 ms
+PASS split_continuity_no_dup_no_loss                       0.3 ms
+PASS trim_speed_reverse_freeze_ripple                      0.3 ms
+PASS speed_ramp_preserves_source_range                     0.2 ms
+PASS precompose_and_validate                               0.3 ms
+PASS parenting_cycle_rejected                              0.1 ms
+PASS locked_layer_rejects_edits                            0.1 ms
+PASS keyframe_ops_through_dispatcher                       0.3 ms
+PASS captions_ops_split_merge_replace_editbytranscript      0.4 ms
+PASS effects_masks_behaviors_transitions_ops               6.3 ms
+PASS text_presets_all_valid                                0.4 ms
+PASS diagnostics_missing_asset_and_font                    0.2 ms
+PASS storage_atomic_save_journal_recovery                 17.5 ms
+PASS storage_migration_v1_to_v2_with_backup                5.7 ms
+PASS packages_checksum_signature_encryption              143.7 ms
+PASS project_package_collected_roundtrip_and_missing_media      5.2 ms
+PASS scripting_api_permissions_errors_single_transaction    307.2 ms
+PASS subtitles_parse_export_roundtrip                      0.1 ms
+PASS caption_segmentation_and_reading_speed                0.0 ms
+PASS gif_encoder_valid_file                               19.5 ms
+PASS tracking_follows_moving_square_and_stabilizes       127.8 ms
+PASS audio_mix_volume_pan_mute_fade_and_analysis          16.2 ms
+PASS engine_command_layer_gesture_autosave_reopen         29.2 ms
+PASS scenario_prd_example_end_to_end                     637.5 ms
+    (skipped: built without whisper)
+PASS whisper_offline_captions_jfk                          0.0 ms
+PASS raster_coverage_area_and_aa                           0.1 ms
+PASS stroke_dash_trim_geometry                             0.0 ms
+PASS render_solid_exact_and_deterministic                  3.4 ms
+PASS render_keyframed_position_and_parenting               2.0 ms
+PASS render_text_and_animator_reveal                       8.0 ms
+PASS render_shapes_fill_stroke_gradient_trim_repeater_merge      9.2 ms
+PASS render_blend_modes_mask_matte_adjustment             48.1 ms
+PASS render_precomp_matches_direct                         3.7 ms
+PASS render_3d_camera_perspective_and_mesh                16.0 ms
+PASS render_all_effects_run_and_are_deterministic        166.3 ms
+PASS render_effect_semantics                               4.4 ms
+PASS render_transitions_and_motion_blur                   10.6 ms
+PASS render_particles_presets                             22.9 ms
+PASS render_captions_layer_highlight                      15.2 ms
+PASS expressions_vector_math_wiggle_loop_refs_errors     101.6 ms
+PASS render_hit_test_and_quad                              1.2 ms
+
+54 tests, 0 failures, 95.3s

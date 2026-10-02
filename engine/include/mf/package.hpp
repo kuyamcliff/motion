@@ -60,6 +60,14 @@ bool exportProjectPackage(const json& doc, const std::string& outPath, ProjectPa
                           const std::function<std::string(const std::string&)>& fontPath, const PackageWriteOptions& opt, std::string& err,
                           const std::string& thumbnailPng = std::string());
 // Imports a project package; collected media extracted to mediaDir and assets re-pointed. Missing media are flagged, never substituted.
+// Forge Capsule packages (.mfcapsule): the capsule JSON plus every font and media file it uses, so a capsule
+// shared with another device renders identically. assetPath/fontPath resolve local files (empty = not embeddable).
+bool exportCapsulePackage(const std::string& outPath, const json& capsule, const std::function<std::string(const json&)>& assetPath,
+                          const std::function<std::string(const std::string&)>& fontPath, const PackageWriteOptions& opt, std::string& err,
+                          std::vector<std::string>* warnings = nullptr);
+// Extracts media/fonts into mediaDir, rewrites asset paths and returns the capsule plus the extracted font files.
+bool importCapsulePackage(const std::string& path, const std::string& mediaDir, json& capsuleOut, std::vector<std::string>& fontFiles,
+                          const PackageReadOptions& opt, std::string& err, std::vector<std::string>* warnings = nullptr);
 bool importProjectPackage(const std::string& path, const std::string& mediaDir, json& docOut, std::vector<std::string>& warnings,
                           const PackageReadOptions& opt, std::string& err);
 

@@ -83,6 +83,10 @@ json registries() {
     };
     for (auto& e : effectRegistry())
         fx.push_back({{"type", e.type}, {"name", e.name}, {"category", e.category}, {"help", e.help}, {"cost", e.costWeight}, {"time", e.timeEffect}, {"params", params(e.params)}});
+    // Composite effects contributed by enabled extensions (category "Extensions").
+    for (auto& [type, def] : compositeEffects())
+        fx.push_back({{"type", type}, {"name", def.value("name", type)}, {"category", "Extensions"}, {"help", def.value("description", std::string())},
+                      {"cost", 2}, {"time", false}, {"params", json::array()}});
     json bh = json::array();
     for (auto& b : behaviorRegistry()) bh.push_back({{"type", b.type}, {"name", b.name}, {"help", b.help}, {"params", params(b.params)}});
     json tr = json::array();
@@ -625,6 +629,39 @@ json call(const std::string& m, const json& a) {
         json cap = a.value("capsule", json::object());
         atomicWriteFile(pathJoin(dataPath("capsules"), safeName(cap.value("name", std::string("Capsule"))) + ".json"), cap.dump());
         return okj();
+    }
+    if (m == "exportCapsulePackage") {
+        // {path, capsule, assetFiles:{assetId: localPath}, password?, signingKey?}
+        json files = jobj(a, "assetFiles");
+        PackageWriteOptions wo;
+        wo.password = a.value("password", std::string());
+        wo.signingKey = a.value("signingKey", std::string());
+        std::string e;
+        std::vector<std::string> warnings;
+        auto assetPath = [&](const json& as) {
+            std::string id = as.value("id", std::string());
+            if (files.contains(id)) return files[id].get<std::string>();
+            return as.value("path", std::string());
+        };
+        auto fontPath = [&](const std::string& f) { auto font = FontManager::instance().get(f); return font ? font->path : std::string(); };
+        if (!exportCapsulePackage(a.value("path", std::string()), jobj(a, "capsule"), assetPath, fontPath, wo, e, &warnings)) return err(e);
+        return okj({{"warnings", warnings}});
+    }
+    if (m == "importCapsulePackage") {
+        PackageReadOptions ro;
+        ro.password = a.value("password", std::string());
+        ro.developerMode = true;
+        json cap;
+        std::vector<std::string> fonts, warnings;
+        std::string e;
+        std::string dir = pathJoin(dataPath("capsule-media"), formatString("c%lld", (long long)(nowSeconds() * 1000)));
+        if (!importCapsulePackage(a.value("path", std::string()), dir, cap, fonts, ro, e, &warnings)) return err(e);
+        for (auto& f : fonts) {
+            std::string fe;
+            if (!FontManager::instance().registerFile(f, std::string(), &fe)) warnings.push_back("Font not registered: " + fe);
+        }
+        atomicWriteFile(pathJoin(dataPath("capsules"), safeName(cap.value("name", std::string("Capsule"))) + ".json"), cap.dump());
+        return okj({{"capsule", cap}, {"warnings", warnings}, {"fonts", fonts.size()}});
     }
     if (m == "savePreset") return savePreset(a);
     if (m == "presets") return okj({{"presets", listJsonDir("presets")}});

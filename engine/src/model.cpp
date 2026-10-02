@@ -535,10 +535,14 @@ std::vector<std::string> idList(const json& op, const char* key) {
 }
 
 // Re-assign ids in a layer subtree (effects, masks, behaviors, animators, shape items).
-void reidLayerChildren(json& doc, json& layer) {
+void reidLayerChildren(json& doc, json& layer, std::map<std::string, std::string>* remap = nullptr) {
     for (const char* arr : {"effects", "masks", "behaviors"}) {
         if (layer.contains(arr))
-            for (auto& e : layer[arr]) e["id"] = newId(doc, arr[0] == 'e' ? "E" : arr[0] == 'm' ? "M" : "B");
+            for (auto& e : layer[arr]) {
+                std::string old = e.value("id", std::string());
+                e["id"] = newId(doc, arr[0] == 'e' ? "E" : arr[0] == 'm' ? "M" : "B");
+                if (remap && !old.empty()) (*remap)[old] = e["id"];
+            }
     }
 }
 
@@ -1780,6 +1784,7 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
         comps.insert(comps.begin(), cap["comp"]);
         for (auto& c : comps) compIds[c.value("id", "")] = newId(doc, "C");
         std::map<std::string, std::string> layerIds;
+        std::map<std::string, std::map<std::string, std::string>> childIds;  // new layer id -> (old effect/mask id -> new id)
         for (auto& c : comps)
             for (auto& L : c["layers"]) layerIds[L.value("id", "")] = newId(doc, "L");
         for (auto& c : comps) {
@@ -1789,7 +1794,7 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
                 if (L["parent"].is_string()) L["parent"] = layerIds[L["parent"].get<std::string>()];
                 if (L["matte"].is_object()) L["matte"]["layer"] = layerIds[L["matte"].value("layer", "")];
                 if (L.contains("precomp")) L["precomp"]["comp"] = compIds[L["precomp"].value("comp", "")];
-                reidLayerChildren(doc, L);
+                reidLayerChildren(doc, L, &childIds[L.value("id", "")]);
             }
             doc["comps"].push_back(c);
         }
@@ -1803,6 +1808,15 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
             // Remap bound layer ids.
             std::string bl = ctl.value("layer", "");
             if (layerIds.count(bl)) ctl["layer"] = layerIds[bl];
+            // Effect/mask/behavior ids inside the bound path were re-generated too (e.g. effects.E4.params.x).
+            std::string path = ctl.value("path", std::string());
+            auto& ids = childIds[ctl.value("layer", std::string())];
+            std::string rebuilt;
+            for (auto& seg : splitPath(path)) {
+                if (!rebuilt.empty()) rebuilt += ".";
+                rebuilt += ids.count(seg) ? ids[seg] : seg;
+            }
+            if (!path.empty()) ctl["path"] = rebuilt;
             controls[ctl.value("name", "")] = ctl.value("default", json());
             defs.push_back(ctl);
         }

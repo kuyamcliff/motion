@@ -232,6 +232,14 @@ fun CapsuleControls(st: EditorState, layer: JSONObject) {
                 if (edit) TextInputDialog(name, v?.toString() ?: "", onDismiss = { edit = false }) { st.op("setCapsuleControl", "layer" to layer.optString("id"), "control" to name, "value" to it) }
             }
             "color" -> ColorRow(name, (v as? JSONArray).toDoubles(4)) { st.op("setCapsuleControl", "layer" to layer.optString("id"), "control" to name, "value" to JSONArray(it.toList())) }
+            "position" -> {
+                val xy = (v as? JSONArray).toDoubles(2)
+                listOf("X", "Y").forEachIndexed { i, axis ->
+                    NumberRow("$name $axis", xy[i], -1000.0, 1000.0, onPreview = {}) { nv ->
+                        st.op("setCapsuleControl", "layer" to layer.optString("id"), "control" to name, "value" to JSONArray(xy.copyOf().also { it[i] = nv }.toList()))
+                    }
+                }
+            }
             else -> NumberRow(name, (v as? Number)?.toDouble() ?: 0.0, d.optDouble("min", 0.0), d.optDouble("max", 100.0), onPreview = {}) {
                 st.op("setCapsuleControl", "layer" to layer.optString("id"), "control" to name, "value" to it)
             }
@@ -252,13 +260,18 @@ fun CreateCapsuleDialog(app: AppState, onDismiss: () -> Unit) {
             if (l.has("shape")) out.add(jo("name" to "${l.optString("name")} Color", "type" to "color", "layer" to id, "path" to "shape.fill.color"))
             if (l.has("solid")) out.add(jo("name" to "${l.optString("name")} Color", "type" to "color", "layer" to id, "path" to "solid.color"))
             out.add(jo("name" to "${l.optString("name")} Opacity", "type" to "number", "layer" to id, "path" to "transform.opacity", "min" to 0, "max" to 100))
+            out.add(jo("name" to "${l.optString("name")} Size", "type" to "size", "layer" to id, "path" to "transform.scale", "min" to 10, "max" to 300, "base" to 100, "default" to 100))
+            out.add(jo("name" to "${l.optString("name")} Position", "type" to "position", "layer" to id, "path" to "transform.position", "default" to listOf(0.0, 0.0)))
             l.arr("effects").objects().forEach { e ->
                 e.obj("params").keys().asSequence().firstOrNull()?.let { k -> out.add(jo("name" to "${st.effectInfo(e.optString("type"))?.optString("name") ?: "Effect"} Intensity", "type" to "intensity", "layer" to id, "path" to "effects.${e.optString("id")}.params.$k", "min" to 0, "max" to 200, "base" to 100, "default" to 100)) }
             }
             out
-        }
+        } + listOfNotNull(st.selection.firstOrNull()?.let {
+            jo("name" to "Speed", "type" to "speed", "layer" to it, "path" to "", "min" to 25, "max" to 400, "base" to 100, "default" to 100)
+        })
     }
-    val chosen = remember { mutableStateOf(cands.map { true }) }
+    // Simple, user-facing controls are on by default; per-layer opacity/position are opt-in.
+    val chosen = remember { mutableStateOf(cands.map { it.optString("type") in setOf("text", "color", "size", "speed", "intensity") }) }
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Create Forge Capsule") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState())) {
             OutlinedTextField(name, { name = it }, label = { Text("Capsule name") }, singleLine = true)

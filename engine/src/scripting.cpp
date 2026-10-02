@@ -1,5 +1,7 @@
 #include "mf/scripting.hpp"
 
+#include <cstring>
+
 #include <chrono>
 #include <set>
 
@@ -142,6 +144,43 @@ JSValue n_action(JSContext* c, JSValueConst, int argc, JSValueConst* argv) {
     return JS_UNDEFINED;
 }
 
+// mf.prop.get(layer, path, time): evaluated value of any property (keyframes + expressions are not applied here;
+// keyframes are, expressions are not, so scripts read the authored value).
+JSValue n_eval(JSContext* c, JSValueConst, int argc, JSValueConst* argv) {
+    if (!need(c, "PROJECT_READ")) return JS_EXCEPTION;
+    if (argc < 2) return JS_ThrowTypeError(c, "mf.prop.get(layerId, path, time?)");
+    ScriptState* st = stateOf(c);
+    const json* comp = st->compId.empty() ? activeComp(st->doc) : findComp(st->doc, st->compId);
+    const json* L = comp ? findLayer(*comp, jsStr(c, argv[0])) : nullptr;
+    if (!L) return JS_ThrowTypeError(c, "Layer '%s' not found", jsStr(c, argv[0]).c_str());
+    std::string path = jsStr(c, argv[1]);
+    const json* P = resolvePath(*L, path);
+    if (!P) return JS_ThrowTypeError(c, "Property '%s' not found on layer", path.c_str());
+    double t = st->req->playhead;
+    if (argc > 2 && JS_IsNumber(argv[2])) JS_ToFloat64(c, &t, argv[2]);
+    if (P->is_object() && (P->contains("v") || P->contains("k"))) return jsonToJs(c, evalRaw(*P, layerLocalTime(*L, t)).toJson());
+    return jsonToJs(c, *P);
+}
+
+// mf.comp.setActive(id): later calls target that composition.
+JSValue n_useComp(JSContext* c, JSValueConst, int argc, JSValueConst* argv) {
+    if (argc < 1) return JS_UNDEFINED;
+    ScriptState* st = stateOf(c);
+    std::string id = jsStr(c, argv[0]);
+    if (!findComp(st->doc, id)) return JS_ThrowTypeError(c, "Composition '%s' not found", id.c_str());
+    st->compId = id;
+    return JS_UNDEFINED;
+}
+
+// UI-side requests that need no extra permission: show a script panel, change selection.
+JSValue n_uiAction(JSContext* c, JSValueConst, int argc, JSValueConst* argv) {
+    if (argc > 0) {
+        auto& a = stateOf(c)->res->actions;
+        if (a.size() < 64) a.push_back(jsToJson(c, argv[0]));
+    }
+    return JS_UNDEFINED;
+}
+
 JSValue n_effects(JSContext* c, JSValueConst, int, JSValueConst*) {
     json out = json::array();
     for (auto& e : effectRegistry()) out.push_back({{"type", e.type}, {"name", e.name}, {"category", e.category}});
@@ -156,7 +195,7 @@ int interrupt(JSRuntime* rt, void* opaque) {
 const char* kScriptPrelude = R"JS(
 var console = { log: function(){ __n_log.apply(null, arguments); }, warn: function(){ __n_log.apply(null, ["WARN"].concat([].slice.call(arguments))); }, error: function(){ __n_log.apply(null, ["ERROR"].concat([].slice.call(arguments))); } };
 var mf = {
-  app: { version: __mf_version, apiVersion: 1 },
+  app: { version: __mf_version, apiVersion: 2 },
   log: function(){ __n_log.apply(null, arguments); },
   op: function(o){ return __n_op(o); },
   get time(){ return __mf_playhead; },
@@ -169,42 +208,142 @@ var mf = {
   },
   comp: {
     active: function(){ return __n_comp(); },
+    list: function(){ return __n_project().comps.map(function(c){ return {id:c.id, name:c.name, width:c.width, height:c.height, fps:c.fps, duration:c.duration}; }); },
     create: function(o){ o = o||{}; o.op = "addComp"; return __n_op(o).comp; },
-    update: function(fields){ fields.op = "updateComp"; return __n_op(fields); }
+    update: function(fields){ fields.op = "updateComp"; return __n_op(fields); },
+    use: function(id){ __n_useComp(id); },
+    setActive: function(id){ __n_op({op:"setActiveComp", comp:id}); __n_useComp(id); },
+    remove: function(id){ return __n_op({op:"removeComp", target:id, comp:id}); },
+    precompose: function(ids, name){ return __n_op({op:"precompose", layers:ids, name:name||"Precomp"}); }
   },
   layer: {
     add: function(kind, options, at){ var r = __n_op({op:"addLayer", kind:kind, options:options||{}, at: at===undefined?__mf_playhead:at}); return r.layer; },
     all: function(){ return __n_comp().layers; },
     get: function(id){ var ls = __n_comp().layers; for (var i=0;i<ls.length;i++) if (ls[i].id===id || ls[i].name===id) return ls[i]; return null; },
     find: function(q){ q = String(q).toLowerCase(); return __n_comp().layers.filter(function(l){ return l.name.toLowerCase().indexOf(q) >= 0; }).map(function(l){ return l.id; }); },
+    ofType: function(t){ return __n_comp().layers.filter(function(l){ return l.type===t; }).map(function(l){ return l.id; }); },
     set: function(id, path, value, time){ return __n_op({op:"setProp", layer:id, path:path, value:value, t: time===undefined?__mf_playhead:time}); },
     setStatic: function(id, path, value){ return __n_op({op:"setProp", layer:id, path:path, value:value, mode:"static"}); },
     rename: function(id, name){ return __n_op({op:"setLayer", layer:id, fields:{name:name}}); },
     fields: function(id, f){ return __n_op({op:"setLayer", layer:id, fields:f}); },
     duplicate: function(id){ return __n_op({op:"duplicateLayers", layers:[id]}).layers[0]; },
-    remove: function(id){ return __n_op({op:"removeLayers", layers:[id]}); },
+    remove: function(id){ return __n_op({op:"removeLayers", layers:[].concat(id)}); },
     timing: function(id, inT, outT){ return __n_op({op:"setLayerTiming", layer:id, "in":inT, out:outT}); },
-    parent: function(id, parentId){ return __n_op({op:"parent", layer:id, parent:parentId, t:__mf_playhead}); }
+    move: function(id, dt){ return __n_op({op:"moveLayerTime", layers:[].concat(id), dt:dt}); },
+    trim: function(id, edge, time){ return __n_op({op:"trimLayer", layer:id, edge:edge, t:time}); },
+    split: function(id, time){ return __n_op({op:"split", layers:[].concat(id), t: time===undefined?__mf_playhead:time}); },
+    reorder: function(id, index){ return __n_op({op:"reorderLayer", layer:id, index:index}); },
+    speed: function(id, s){ return __n_op({op:"setSpeed", layer:id, speed:s}); },
+    reverse: function(id, on){ return __n_op({op:"reverse", layer:id, on: on!==false}); },
+    freeze: function(id, time, dur){ return __n_op({op:"freezeFrame", layer:id, t:time===undefined?__mf_playhead:time, duration:dur||2}).layer; },
+    blend: function(id, mode){ return __n_op({op:"setLayer", layer:id, fields:{blend:mode}}); },
+    matte: function(id, matteId, mode, invert){ return __n_op({op:"setLayer", layer:id, fields:{matte: matteId ? {layer:matteId, mode:mode||"alpha", invert:!!invert} : null}}); },
+    threeD: function(id, on){ return __n_op({op:"setLayer", layer:id, fields:{threeD: on!==false}}); },
+    parent: function(id, parentId){ return __n_op({op:"parent", layer:id, parent:parentId, t:__mf_playhead}); },
+    select: function(ids){ __n_uiAction({type:"select", layers:[].concat(ids)}); }
+  },
+  prop: {
+    get: function(id, path, time){ return __n_eval(id, path, time); },
+    set: function(id, path, value, time){ return __n_op({op:"setProp", layer:id, path:path, value:value, t: time===undefined?__mf_playhead:time}); },
+    expression: function(id, path, expr){ return __n_op({op:"setExpression", layer:id, path:path, expr:expr||""}); }
   },
   keyframe: {
     add: function(id, path, time, value, interp){ var o = {op:"addKeyframe", layer:id, path:path, t:time}; if (value!==undefined) o.value=value; if (interp) o.interp=interp; return __n_op(o); },
     remove: function(id, path, time){ return __n_op({op:"removeKeyframe", layer:id, path:path, t:time}); },
-    interp: function(id, path, time, interp){ return __n_op({op:"setKeyframeInterp", layer:id, path:path, t:time, interp:interp}); }
+    interp: function(id, path, time, interp){ return __n_op({op:"setKeyframeInterp", layer:id, path:path, t:time, interp:interp}); },
+    interpAll: function(id, path, interp){ return __n_op({op:"setKeyframeInterp", layer:id, path:path, t:0, interp:interp, all:true}); },
+    move: function(id, path, from, to){ return __n_op({op:"moveKeyframe", layer:id, path:path, from:from, to:to}); },
+    list: function(id, path){ var l = mf.layer.get(id); if (!l) return []; var p = path.split(".").reduce(function(o,k){ if (!o) return o; if (Array.isArray(o)) { for (var i=0;i<o.length;i++) if (o[i].id===k) return o[i]; return o[+k]; } return o[k]; }, l); return (p && p.k) ? p.k.map(function(k){ return {t: k.t + l.start, v: k.v, interp: k.o}; }) : []; },
+    clear: function(id, path){ return __n_op({op:"clearKeyframes", layer:id, path:path, t:__mf_playhead}); },
+    reverse: function(id, path){ return __n_op({op:"reverseKeyframes", layer:id, path:path}); },
+    distribute: function(id, path){ return __n_op({op:"distributeKeyframes", layer:id, path:path}); },
+    scale: function(id, path, factor, pivot){ return __n_op({op:"scaleKeyframes", layer:id, path:path, factor:factor, pivot:pivot}); }
   },
   effect: {
     add: function(id, type, params){ return __n_op({op:"addEffect", layer:id, type:type, params:params||{}}).effect; },
-    list: function(){ return __n_effects(); }
+    list: function(){ return __n_effects(); },
+    on: function(id){ var l = mf.layer.get(id); return l ? l.effects : []; },
+    remove: function(id, fx){ return __n_op({op:"removeEffect", layer:id, effect:fx}); },
+    enable: function(id, fx, on){ return __n_op({op:"setEffect", layer:id, effect:fx, fields:{enabled: on!==false}}); },
+    mix: function(id, fx, pct){ return __n_op({op:"setEffect", layer:id, effect:fx, fields:{mix: pct}}); },
+    move: function(id, fx, index){ return __n_op({op:"moveEffect", layer:id, effect:fx, index:index}); },
+    param: function(id, fx, name, value, time){ return __n_op({op:"setProp", layer:id, path:"effects."+fx+".params."+name, value:value, t: time===undefined?__mf_playhead:time}); }
   },
-  shape: { add: function(id, item){ return __n_op({op:"addShapeItem", layer:id, item:item}).item; } },
+  mask: {
+    add: function(id, shape, rect){ var o = {op:"addMask", layer:id, shape:shape||"rect"}; if (rect) o.rect = rect; return __n_op(o).mask; },
+    remove: function(id, m){ return __n_op({op:"removeMask", layer:id, mask:m}); },
+    set: function(id, m, fields){ return __n_op({op:"setMask", layer:id, mask:m, fields:fields}); }
+  },
+  shape: {
+    add: function(id, item){ return __n_op({op:"addShapeItem", layer:id, item:item}).item; },
+    remove: function(id, item){ return __n_op({op:"removeShapeItem", layer:id, item:item}); },
+    fill: function(id, color){ return __n_op({op:"setProp", layer:id, path:"shape.fill.color", value:color, mode:"static"}); },
+    stroke: function(id, color, width){ __n_op({op:"setProp", layer:id, path:"shape.stroke.enabled", value:true}); __n_op({op:"setProp", layer:id, path:"shape.stroke.color", value:color, mode:"static"}); return __n_op({op:"setProp", layer:id, path:"shape.stroke.width", value:width||4, mode:"static"}); },
+    modifier: function(id, name, on){ return __n_op({op:"setProp", layer:id, path:"shape."+name+".enabled", value: on!==false}); }
+  },
   text: {
     set: function(id, content){ return __n_op({op:"setText", layer:id, content:String(content)}); },
-    preset: function(id, name, duration){ return __n_op({op:"textPreset", layer:id, preset:name, duration:duration||1, t:__mf_playhead}); }
+    preset: function(id, name, duration){ return __n_op({op:"textPreset", layer:id, preset:name, duration:duration||1, t:__mf_playhead}); },
+    style: function(id, s){ for (var k in s) __n_op({op:"setProp", layer:id, path:"text."+k, value:s[k], mode: (k==="font"||k==="align") ? undefined : "static"}); },
+    animator: function(id, animator){ return __n_op({op:"addAnimator", layer:id, animator:animator}).animator; },
+    removeAnimator: function(id, a){ return __n_op({op:"removeAnimator", layer:id, animator:a}); }
   },
-  marker: { add: function(time, title, opts){ var o = opts||{}; o.op="addMarker"; o.t=time; o.title=title||""; return __n_op(o).marker; } },
-  caption: { set: function(items){ return __n_op({op:"setCaptions", items:items}); } },
-  behavior: { add: function(id, type, params){ return __n_op({op:"addBehavior", layer:id, type:type, params:params||{}}).behavior; } },
+  camera: {
+    add: function(options){ return mf.layer.add("camera", options||{}, 0); },
+    lookAt: function(id, point){ return __n_op({op:"setProp", layer:id, path:"camera.poi", value:point, t:__mf_playhead}); },
+    zoom: function(id, z){ return __n_op({op:"setProp", layer:id, path:"camera.zoom", value:z, t:__mf_playhead}); }
+  },
+  light: { add: function(kind, options){ var o = options||{}; o.light = kind||"point"; return mf.layer.add("light", o, 0); } },
+  model: {
+    primitive: function(name, options){ var o = options||{}; o.primitive = name||"cube"; return mf.layer.add("model3d", o); },
+    material: function(id, m){ for (var k in m) __n_op({op:"setProp", layer:id, path:"model.material."+k, value:m[k], mode:"static"}); }
+  },
+  particles: { add: function(preset){ return mf.layer.add("particles", {preset: preset||"sparks"}); } },
+  audio: {
+    volume: function(id, db, time){ return __n_op({op:"setProp", layer:id, path:"audio.volume", value:db, t: time===undefined?__mf_playhead:time}); },
+    pan: function(id, p){ return __n_op({op:"setProp", layer:id, path:"audio.pan", value:p, mode:"static"}); },
+    bus: function(id, b){ return __n_op({op:"setProp", layer:id, path:"audio.bus", value:b}); },
+    duck: function(id, ranges, amount){ return __n_op({op:"addDuckingKeys", layer:id, ranges:ranges, amount: amount===undefined?-12:amount}); },
+    mixer: function(audio){ return __n_op({op:"setCompAudio", audio:audio}); }
+  },
+  marker: {
+    add: function(time, title, opts){ var o = opts||{}; o.op="addMarker"; o.t=time; o.title=title||""; return __n_op(o).marker; },
+    list: function(){ return __n_comp().markers || []; },
+    remove: function(id){ return __n_op({op:"removeMarker", marker:id}); }
+  },
+  caption: {
+    set: function(items){ return __n_op({op:"setCaptions", items:items}); },
+    add: function(items){ return __n_op({op:"setCaptions", items:items, append:true}); },
+    list: function(){ var l = __n_comp().layers.filter(function(x){ return x.type==="captions"; })[0]; return l ? l.captions.items : []; },
+    update: function(id, fields){ return __n_op({op:"updateCaption", caption:id, fields:fields}); },
+    remove: function(id){ return __n_op({op:"removeCaption", caption:id}); },
+    split: function(id, time){ return __n_op({op:"splitCaption", caption:id, t:time}); },
+    merge: function(a, b){ return __n_op({op:"mergeCaptions", first:a, second:b}); },
+    style: function(s){ return __n_op({op:"setCaptionStyle", style:s}); },
+    replace: function(find, repl){ return __n_op({op:"captionReplace", find:find, replace:repl}).count; }
+  },
+  capsule: {
+    insert: function(capsule, time){ return __n_op({op:"insertCapsule", capsule:capsule, t: time===undefined?__mf_playhead:time}).layer; },
+    control: function(id, name, value){ return __n_op({op:"setCapsuleControl", layer:id, control:name, value:value}); },
+    controls: function(id){ var l = mf.layer.get(id); return (l && l.precomp) ? l.precomp.controlDefs : []; }
+  },
+  preset: { apply: function(id, preset){ return __n_op({op:"applyPreset", layer:id, preset:preset}); } },
+  transition: { set: function(id, edge, type, duration, params){ return __n_op({op:"setTransition", layer:id, edge:edge||"in", transition: type ? {type:type, duration:duration||0.5, params:params||{}} : null}); } },
+  behavior: {
+    add: function(id, type, params){ return __n_op({op:"addBehavior", layer:id, type:type, params:params||{}}).behavior; },
+    bake: function(id, b){ return __n_op({op:"bakeBehavior", layer:id, behavior:b}); },
+    remove: function(id, b){ return __n_op({op:"removeBehavior", layer:id, behavior:b}); }
+  },
+  media: {
+    list: function(){ return __n_project().assets; },
+    request: function(kinds){ __n_uiAction({type:"importRequest", kinds:[].concat(kinds||["video","image","audio"])}); }
+  },
   storage: { get: function(k){ return __n_storageGet(k); }, set: function(k, v){ return __n_storageSet(k, v); } },
-  ui: { alert: function(m){ __n_alert(String(m)); } },
+  ui: {
+    alert: function(m){ __n_alert(String(m)); },
+    // Declares a panel of inputs; Script Studio renders it and re-runs the script with the values in mf.args.
+    panel: function(spec){ __n_uiAction({type:"panel", spec:spec}); }
+  },
   render: { requestExport: function(preset){ __n_action({type:"export", preset:preset||{}}); } }
 };
 )JS";
@@ -292,6 +431,9 @@ ScriptResult runScript(const ScriptRequest& req) {
     fn("__n_storageSet", n_storageSet, 2);
     fn("__n_action", n_action, 1);
     fn("__n_effects", n_effects, 0);
+    fn("__n_eval", n_eval, 3);
+    fn("__n_useComp", n_useComp, 1);
+    fn("__n_uiAction", n_uiAction, 1);
     JS_SetPropertyStr(c, g, "__mf_version", JS_NewString(c, kEngineVersion));
     JS_SetPropertyStr(c, g, "__mf_playhead", JS_NewFloat64(c, req.playhead));
     JS_SetPropertyStr(c, g, "__mf_selection", jsonToJs(c, json(req.selection)));
@@ -353,9 +495,42 @@ bool validateScriptSyntax(const std::string& source, std::string& error, int& li
     return ok;
 }
 
+// Every function of the live `mf` object with its parameter names, generated from the prelude itself so the
+// reference can never drift from the API.
+static json introspectApi() {
+    JSRuntime* rt = JS_NewRuntime();
+    JSContext* c = JS_NewContext(rt);
+    JSValue g = JS_GetGlobalObject(c);
+    JS_SetPropertyStr(c, g, "__mf_version", JS_NewString(c, kEngineVersion));
+    JS_SetPropertyStr(c, g, "__mf_playhead", JS_NewFloat64(c, 0));
+    JS_SetPropertyStr(c, g, "__mf_selection", JS_NewArray(c));
+    JS_SetPropertyStr(c, g, "__mf_args", JS_NewObject(c));
+    JS_FreeValue(c, g);
+    json out = json::array();
+    JSValue r = JS_Eval(c, kScriptPrelude, std::strlen(kScriptPrelude), "<prelude>", JS_EVAL_TYPE_GLOBAL);
+    JS_FreeValue(c, r);
+    const char* walker = R"JS(
+(function(){ var out = [];
+  function walk(o, p) { Object.keys(o).forEach(function(k){
+    var d = Object.getOwnPropertyDescriptor(o, k);
+    if (d.get) { out.push(p + k); return; }
+    var v = o[k];
+    if (typeof v === 'function') { var m = String(v).match(/^function\s*\(([^)]*)\)/); out.push(p + k + '(' + (m ? m[1].replace(/\s+/g, ' ') : '') + ')'); }
+    else if (v && typeof v === 'object' && !Array.isArray(v)) walk(v, p + k + '.');
+  }); }
+  walk(mf, 'mf.'); return JSON.stringify(out); })())JS";
+    JSValue w = JS_Eval(c, walker, std::strlen(walker), "<api>", JS_EVAL_TYPE_GLOBAL);
+    if (JS_IsString(w)) out = json::parse(jsStr(c, w), nullptr, false);
+    JS_FreeValue(c, w);
+    JS_FreeContext(c);
+    JS_FreeRuntime(rt);
+    return out.is_array() ? out : json::array();
+}
+
 json scriptApiDescription() {
     auto f = [](const char* name, const char* sig, const char* doc, const char* perm) { return json{{"name", name}, {"signature", sig}, {"doc", doc}, {"permission", perm}}; };
-    return json{{"apiVersion", 1},
+    return json{{"apiVersion", 2},
+                {"functions", introspectApi()},
                 {"globals", json::array({f("mf.log", "(...values)", "Print to the Script Studio console.", ""),
                                          f("mf.op", "(op: object) -> object", "Apply any engine operation (see Developer Center > Operations).", "PROJECT_WRITE"),
                                          f("mf.time", "number", "Current playhead (seconds).", ""), f("mf.selection", "string[]", "Selected layer ids.", ""),
@@ -392,7 +567,9 @@ json scriptApiDescription() {
 
 json exampleScripts() {
     return json::array(
-        {{{"name", "Stagger Selected Layers"}, {"permissions", {"PROJECT_READ", "TIMELINE_WRITE"}},
+        {{{"name", "Lower Third Builder (panel)"}, {"permissions", {"PROJECT_READ", "TIMELINE_WRITE"}},
+          {"source", "// Declares a panel; fill it in and run again.\nmf.ui.panel({fields: [\n  {name: 'name', label: 'Name', type: 'text', default: 'Alex Rivera'},\n  {name: 'role', label: 'Role', type: 'text', default: 'Director'},\n  {name: 'color', label: 'Accent', type: 'color', default: [1, 0.42, 0.24, 1]},\n  {name: 'seconds', label: 'Duration', type: 'number', min: 1, max: 10, default: 4}\n]});\nif (!mf.args.name) return;\nvar c = mf.comp.active();\nvar bar = mf.layer.add('shape', {shape: 'rect', color: mf.args.color});\nmf.prop.set(bar, 'transform.position', [c.width * 0.3, c.height * 0.82, 0], mf.time);\nvar t1 = mf.layer.add('text', {text: mf.args.name, size: 64});\nmf.prop.set(t1, 'transform.position', [c.width * 0.3, c.height * 0.8, 0], mf.time);\nvar t2 = mf.layer.add('text', {text: mf.args.role, size: 36});\nmf.prop.set(t2, 'transform.position', [c.width * 0.3, c.height * 0.87, 0], mf.time);\n[bar, t1, t2].forEach(function(id){ mf.layer.timing(id, mf.time, mf.time + (mf.args.seconds || 4)); });\nmf.text.preset(t1, 'fadeUp', 0.6);\nmf.text.preset(t2, 'fadeUp', 0.8);\nmf.layer.select([t1]);\n"}},
+         {{"name", "Stagger Selected Layers"}, {"permissions", {"PROJECT_READ", "TIMELINE_WRITE"}},
           {"source", "// Offsets each selected layer by 4 frames.\nvar sel = mf.selection;\nif (sel.length === 0) mf.ui.alert('Select layers first');\nfor (var i = 0; i < sel.length; i++) {\n  mf.op({op:'moveLayerTime', layers:[sel[i]], dt: i * 4 / mf.comp.active().fps});\n}\nmf.log('Staggered', sel.length, 'layers');\n"}},
          {{"name", "Title Generator"}, {"permissions", {"PROJECT_READ", "TIMELINE_WRITE"}},
           {"source", "var id = mf.layer.add('text', {text: mf.args.title || 'Hello', size: 140});\nmf.keyframe.add(id, 'transform.position', mf.time, [200, 540, 0]);\nmf.keyframe.add(id, 'transform.position', mf.time + 1, [960, 540, 0], 'easeOut');\nmf.effect.add(id, 'stylize.glow');\nmf.text.preset(id, 'fadeUp', 1);\nreturn id;\n"}},

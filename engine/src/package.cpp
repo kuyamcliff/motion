@@ -451,4 +451,105 @@ bool importJsonPackage(const std::string& path, const std::string& expectedKind,
     return true;
 }
 
+
+// ---------------------------------------------------------------- capsules
+namespace {
+void collectCapsuleFonts(const json& comp, std::set<std::string>& fonts) {
+    for (auto& L : jarr(comp, "layers")) {
+        if (L.contains("text")) fonts.insert(L["text"].value("font", std::string()));
+        if (L.contains("captions")) fonts.insert(jobj(L["captions"], "style").value("font", std::string()));
+    }
+}
+}  // namespace
+
+bool exportCapsulePackage(const std::string& outPath, const json& capsule, const std::function<std::string(const json&)>& assetPath,
+                          const std::function<std::string(const std::string&)>& fontPath, const PackageWriteOptions& opt, std::string& err,
+                          std::vector<std::string>* warnings) {
+    if (!capsule.contains("comp")) { err = "Capsule has no composition."; return false; }
+    Package pkg;
+    pkg.kind = "capsule";
+    json cap = capsule;
+    // Fonts used anywhere inside the capsule.
+    std::set<std::string> fonts;
+    collectCapsuleFonts(cap["comp"], fonts);
+    for (auto& c : jarr(cap, "comps")) collectCapsuleFonts(c, fonts);
+    json fontList = json::array();
+    for (auto& f : fonts) {
+        if (f.empty()) continue;
+        std::string p = fontPath ? fontPath(f) : std::string();
+        if (p.empty() || !fileExists(p)) {
+            if (warnings) warnings->push_back("Font '" + f + "' could not be embedded; the receiver needs it installed.");
+            continue;
+        }
+        std::string name = "fonts/" + f + "." + pathExtensionLower(p);
+        pkg.diskFiles[name] = p;
+        fontList.push_back({{"name", f}, {"file", name}});
+    }
+    // Media files.
+    for (auto& a : cap["assets"]) {
+        if (a.contains("generator")) continue;
+        std::string p = assetPath ? assetPath(a) : std::string();
+        if (p.empty() || !fileExists(p)) {
+            if (warnings) warnings->push_back("Media '" + a.value("name", std::string()) + "' could not be embedded.");
+            continue;
+        }
+        std::string ext = pathExtensionLower(p);
+        std::string name = "media/" + a.value("id", std::string("asset")) + (ext.empty() ? "" : "." + ext);
+        pkg.diskFiles[name] = p;
+        a["packagePath"] = name;
+        a.erase("uri");
+        a.erase("path");
+    }
+    cap["fonts"] = fontList;
+    std::string s = cap.dump();
+    pkg.files["content.json"] = std::vector<uint8_t>(s.begin(), s.end());
+    json ctl = json::array();
+    for (auto& c : jarr(cap, "controls")) ctl.push_back({{"name", c.value("name", std::string())}, {"type", c.value("type", std::string())}});
+    pkg.manifest = {{"name", cap.value("name", std::string("Capsule"))}, {"version", cap.value("version", std::string("1.0"))}, {"controls", ctl},
+                    {"fonts", fontList.size()}, {"media", pkg.diskFiles.size() - fontList.size()}};
+    return writePackage(outPath, pkg, opt, err);
+}
+
+bool importCapsulePackage(const std::string& path, const std::string& mediaDir, json& capsuleOut, std::vector<std::string>& fontFiles,
+                          const PackageReadOptions& opt0, std::string& err, std::vector<std::string>* warnings) {
+    PackageReadOptions opt = opt0;
+    opt.extractDir = mediaDir;
+    PackageReadResult r = readPackage(path, opt);
+    if (!r.ok) { err = r.error; return false; }
+    if (r.pkg.kind != "capsule") { err = "This file is not a capsule package (.mfcapsule)."; return false; }
+    auto it = r.pkg.files.find("content.json");
+    if (it == r.pkg.files.end()) { err = "Capsule data missing from package."; return false; }
+    json cap = json::parse(std::string(it->second.begin(), it->second.end()), nullptr, false);
+    if (cap.is_discarded() || !cap.contains("comp")) { err = "Capsule data is damaged."; return false; }
+    makeDirs(mediaDir);
+    auto extract = [&](const std::string& pp) -> std::string {
+        if (r.extracted.count(pp)) return r.extracted[pp];
+        auto f = r.pkg.files.find(pp);
+        if (f == r.pkg.files.end()) return std::string();
+        std::string local = pathJoin(mediaDir, pathBasename(pp));
+        atomicWriteFile(local, std::string(f->second.begin(), f->second.end()));
+        return local;
+    };
+    for (auto& a : cap["assets"]) {
+        std::string pp = a.value("packagePath", std::string());
+        if (pp.empty()) continue;
+        std::string local = extract(pp);
+        if (local.empty()) {
+            a["missing"] = true;
+            if (warnings) warnings->push_back("Media '" + a.value("name", std::string()) + "' is missing from the package.");
+            continue;
+        }
+        a["path"] = local;
+        a.erase("packagePath");
+    }
+    for (auto& f : jarr(cap, "fonts")) {
+        std::string local = extract(f.value("file", std::string()));
+        if (!local.empty()) fontFiles.push_back(local);
+    }
+    for (auto& w : r.warnings)
+        if (warnings) warnings->push_back(w);
+    capsuleOut = cap;
+    return true;
+}
+
 }  // namespace mf

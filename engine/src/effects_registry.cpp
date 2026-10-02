@@ -221,6 +221,11 @@ const json* findCompositeEffect(const std::string& type) {
     return it == g_composites.end() ? nullptr : &it->second;
 }
 
+std::map<std::string, json> compositeEffects() {
+    std::lock_guard<std::mutex> lk(g_compositeMutex);
+    return g_composites;
+}
+
 // ---------------------------------------------------------------- behaviours
 const std::vector<BehaviorInfo>& behaviorRegistry() {
     static const std::vector<BehaviorInfo> reg = [] {

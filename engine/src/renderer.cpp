@@ -601,6 +601,10 @@ class RenderJob {
         double st = layerSourceTime(L, t);
         json overrides = jobj(L["precomp"], "controls");
         json defs = jarr(L["precomp"], "controlDefs");
+        // Capsule "speed" control: plays the capsule's internal animation faster/slower.
+        for (auto& d : defs)
+            if (d.value("type", "") == "speed" && overrides.contains(d.value("name", "")) && overrides[d.value("name", "")].is_number())
+                st *= clampv(overrides[d.value("name", "")].get<double>() / std::max(1e-6, d.value("base", 100.0)), 0.05, 20.0);
         std::string key = formatString("pc|%llu|%s|%.6f|%.4f|", (unsigned long long)F.rs.revision, sub->value("id", "").c_str(), st, F.scale) +
                           (defs.empty() ? std::string() : overrides.dump()) + (F.rs.exportMode ? "|x" : "");
         if (F.rs.revision != 0) {
@@ -624,17 +628,37 @@ class RenderJob {
                 if (!prop) continue;
                 const json& v = overrides[name];
                 std::string kind = d.value("type", "");
-                if (kind == "duration") {
-                    // Duration control time-stretches keyframes of the bound layer.
-                    continue;
-                }
-                if (prop->is_object() && (prop->contains("v") || prop->contains("k"))) {
-                    if (kind == "intensity" && hasKeyframes(*prop)) {
-                        double base = d.value("base", 100.0);
+                if (kind == "duration" || kind == "speed") continue;  // handled as capsule time scaling
+                bool animatable = prop->is_object() && (prop->contains("v") || prop->contains("k"));
+                // Applies fn to the static value and to every keyframe value of an animatable property.
+                auto mapValues = [&](const std::function<json(const json&)>& fn) {
+                    if (prop->contains("v")) (*prop)["v"] = fn((*prop)["v"]);
+                    if (hasKeyframes(*prop))
+                        for (auto& kf : (*prop)["k"]) kf["v"] = fn(kf["v"]);
+                };
+                if (animatable && (kind == "intensity" || kind == "size" || kind == "position")) {
+                    // Relative controls keep the author's animation and scale/offset it.
+                    double base = d.value("base", kind == "position" ? 0.0 : 100.0);
+                    if (kind == "position") {
+                        if (!v.is_array() || v.size() < 2) continue;
+                        double dx = v[0].get<double>(), dy = v[1].get<double>();
+                        mapValues([&](const json& x) {
+                            json o = x;
+                            if (o.is_array() && o.size() >= 2) { o[0] = o[0].get<double>() + dx; o[1] = o[1].get<double>() + dy; }
+                            return o;
+                        });
+                    } else if (v.is_number()) {
                         double k = v.get<double>() / std::max(1e-6, base);
-                        for (auto& kf : (*prop)["k"])
-                            if (kf["v"].is_number()) kf["v"] = kf["v"].get<double>() * k;
-                    } else {
+                        mapValues([&](const json& x) {
+                            json o = x;
+                            if (o.is_number()) o = o.get<double>() * k;
+                            else if (o.is_array() && kind == "size")  // scale X/Y, keep Z
+                                for (size_t i = 0; i < std::min<size_t>(2, o.size()); ++i) o[i] = o[i].get<double>() * k;
+                            return o;
+                        });
+                    }
+                } else if (animatable) {
+                    {
                         prop->erase("k");
                         (*prop)["v"] = v;
                     }
