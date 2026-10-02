@@ -1,0 +1,30 @@
+stable (system_server 9084)
+Performing Streamed Install
+Success
+Performing Streamed Install
+Success
+warning: com.motionforge.mobile not AOT-compiled
+warning: com.motionforge.mobile.test not AOT-compiled
+INSTRUMENTATION_STATUS: class=com.motionforge.app.WorkflowRegressionTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+com.motionforge.app.WorkflowRegressionTest:
+INSTRUMENTATION_STATUS: test=fullCreatorWorkflowEndsInVerifiedExport
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.WorkflowRegressionTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=fullCreatorWorkflowEndsInVerifiedExport
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_RESULT: stream=
+
+Time: 1,296.08
+
+OK (1 test)
+
+
+INSTRUMENTATION_CODE: -1

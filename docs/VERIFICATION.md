@@ -1,62 +1,58 @@
-# Verification matrix
+# Verification
 
-These results were produced in the build environment: Linux host, and an Android emulator (API 30, x86_64) running in software emulation without KVM. The raw logs are in [`docs/test-logs/`](test-logs).
+All results below come from the build environment: a Linux container, and an Android 11 x86_64 emulator running in **software emulation** (no KVM). The raw logs are in [`test-logs/`](test-logs). Per-feature status is in [FEATURE_STATUS.md](FEATURE_STATUS.md).
 
-## Test runs
+## Host (engine)
 
-| Suite | Result | Log |
+| Suite | Result |
+|---|---|
+| `mftests`: 59 test groups (model, undo, keyframes, expressions, rendering, effects, text, 3D, audio, storage/recovery, packages, scripting, capsules, tracking, scenarios, regressions) | **59/59 pass** |
+| Pair combinations: every pair of 24 feature builders | **300/300 pass** |
+| Random combinations: 3–8 features each, with determinism, round-trip, undo-all/redo-all and validation checks | **400/400** by default; **3,000/3,000** in the long run (37,820 ops applied, 38 cleanly rejected) |
+| Every effect × 6 layer kinds, with keyframed parameters | **402/402 pass** |
+| Stress: 500 layers / 2000 keyframes, 4K with 5 effects, 8-deep nesting + particles + 20 models + 2000 captions, 1 h timeline | pass (timings in `host-mftests.txt`) |
+| Whisper on `jfk.wav` | WER 0.000 |
+| Scenarios `basic_edit`, `whisper_captions` | pass |
+
+## Android device suites
+
+29 tests in 8 classes, run by `scripts/android/run-tests.sh` (one instrumentation per class).
+
+| Class | Result on the current code | Covers |
 |---|---|---|
-| Engine unit + integration tests (host, Whisper enabled) | **47 / 47 pass** | `test-logs/host-mftests.txt` |
-| Scenario `basic_edit.mftest` (create → animate → split → undo/redo → save/reopen → render → GIF export → validate → WAV) | **PASS** | `test-logs/host-scenarios.txt` |
-| Scenario `whisper_captions.mftest` (offline Whisper on JFK sample → SRT export → validate) | **PASS**, transcript exact | `test-logs/host-scenarios.txt` |
-| Android `EngineE2ETest` (7 tests, on emulator) | **7 / 7 pass** | `test-logs/android-EngineE2ETest.txt` |
-| Android `UiE2ETest` (real UI: new project → add text → undo/redo buttons → frame step → play → pause via Space → save → back → reopen) | **1 / 1 pass** | `test-logs/android-UiE2ETest.txt` |
-| Full instrumented suite on the final build (both classes) | **8 / 8 pass** | `test-logs/android-full-suite.txt` |
-| `assembleDebug` (arm64-v8a + x86_64) | builds | — |
-| `assembleRelease` (arm64-v8a + x86_64, signed with the debug key) | builds; `apksigner verify` OK | — |
+| `EngineE2ETest` (7) | **7/7** | edit/undo/render/persist, crash recovery, Whisper captions on device, MP4 + GIF export validation, script single-undo + permission denial, encrypted package round trip |
+| `UiE2ETest` (1) | **1/1** | new project → add text → undo/redo buttons → frame step → play → pause (Space) → save → reopen |
+| `WorkflowRegressionTest` (1) | **1/1** | import video → trim → split → invert FX → mask → animated title → audio → Whisper captions → MP4 export → reopen → pixel and track inspection of the export |
+| `CombinationsDeviceTest` (2) | **2/2** | 24 random feature combinations, each with save/reopen and render comparison; 500-layer stress test |
+| `VideoLayerDeviceTest` (2) | **2/2** | MediaCodec decode → composite → re-export pixels; 38-step decoder seek stress |
+| `CapsuleScriptDeviceTest` (2) | **2/2** | Capsule v2 controls, plus the `.mfcapsule` export → delete → import → insert round trip; Script API v2 across every area as one undo step |
+| `ScreensE2ETest` (15) | **15/15 have each passed on the current code**. Whole-class runs on the *debug* build were aborted by an emulator input-dispatch ANR in the first test, so the class now targets the non-debuggable `uitest` build (see below). | every screen and inspector panel, verified after reopening |
+| `FailureArtifacts` (rule) | — | screenshot + UI dump on every failure |
 
-## Bugs found by the E2E tests and fixed
+## Bugs the device and combination suites found (all fixed)
 
-* Playback crash: the AudioTrack was released while its writer thread was blocked in `write()`. The writer now owns the track's lifetime.
-* UI thread starvation during playback (ANR on slow devices). Three fixes:
-  * the frame loop no longer spins;
-  * the render thread runs at normal priority, and the engine pool leaves one core for the UI;
-  * the inspector pauses while playing.
+1. **Video showed green frames after the decoder started.** The decoder flushed right after `start()`, which discards the H.264 SPS/PPS. Found by pixel inspection of the workflow export; ffmpeg confirmed the source file was clean.
+2. **A relinked video could keep showing the old file.** The decoder pool and the native frame cache were keyed by asset ID only.
+3. **Extension effects never appeared in the effect browser,** and the registry was cached for the app's lifetime.
+4. **Capsule controls bound to effect parameters broke on insert,** because effect IDs were re-generated.
+5. **Relink in Project Inspector always failed:** the new file wasn't passed to the engine.
+6. **Expression errors leaked between projects:** an engine-global map keyed by layer ID.
+7. **The extension Uninstall button was pushed off-screen** by the Enabled switch row.
+8. **The Developer Center Scenarios tab was clipped off-screen** on phone widths.
+9. **Playback crashed on stop:** AudioTrack was used after release.
+10. **The UI thread starved during playback:** a spinning frame loop, the render thread at high priority, and the inspector re-evaluating every frame.
+11. **The first launch copied the 31 MB speech model on the main thread** (ANR risk on low-end phones).
 
-## Feature → evidence
+## Test-infrastructure findings (emulator, not app bugs)
 
-| PRD area | Status | Verified by |
-|---|---|---|
-| Projects: create, open, rename, duplicate, delete, thumbnails | Implemented | UiE2ETest (create/reopen), host storage tests |
-| Atomic save, journal, crash recovery (session lock) | Implemented | `EngineE2ETest.crashRecoveryFromJournal` (simulated process death → journal replay), host `storage_*` tests |
-| Undo/redo: one step per operation, gesture previews, history jump | Implemented | `EngineE2ETest.editUndoRedoRenderAndPersist`, UiE2ETest undo/redo buttons, host document tests |
-| Timeline: trim, move, split, ripple delete, snapping, markers | Implemented | Split verified on device; host model tests |
-| Keyframes: easing presets, bezier, spring/elastic, copy/paste, reverse, distribute, graph editor | Implemented | Device keyframe test; host easing/property tests |
-| Expressions (QuickJS, vector math, wiggle/loopOut, error fallback) | Implemented | host `expressions_*` |
-| Text: typography, shadow/box, animators/presets, 3D extrude | Implemented | host text render tests |
-| Shapes: primitives, merge (add/subtract/intersect), trim paths, repeater, zig-zag, round corners | Implemented | host shape tests |
-| Effects (~60, stackable, mix, solo), adjustment layers, masks, track mattes, blend modes | Implemented | host render tests |
-| Transitions, behaviors (bake to keys), particles, motion blur | Implemented | host render tests |
-| Software 3D: camera, lights, shadows, primitives, OBJ/GLB | Implemented (CPU) | host 3D tests |
-| Audio: mixer, EQ, compressor, gate, pitch, buses, ducking, limiter | Implemented | host audio tests, MP4 export with an audio track |
-| **Offline captions with Whisper** (word timestamps, VAD, segmentation, reading-speed checks, styles, edit by transcript, SRT/VTT/ASS) | Implemented | `EngineE2ETest.whisperCaptionsFromBundledSpeech` (MediaCodec decode → whisper.cpp on device → captions → one undo step → SRT); host WER test (WER 0.000) |
-| Export MP4 (MediaCodec + EGL + MediaMuxer) with validation of tracks, resolution, frame count, duration and a decoded sample frame | Implemented | `EngineE2ETest.exportMp4IsValidated` |
-| Export GIF / PNG sequence / WAV / M4A / WebM | Implemented | `exportGifIsValidated`, basic_edit scenario (GIF, WAV) |
-| Export queue, foreground service, cancel/retry, gallery publish | Implemented | Manual review of code paths; queue survives restarts |
-| Packages: zip + manifest + BLAKE2b, Ed25519 signing, Argon2/XChaCha20 encryption | Implemented | `EngineE2ETest.packageRoundTrip` (wrong password rejected), host package tests |
-| Scripting sandbox with permissions; a script run is one undo step | Implemented | `EngineE2ETest.scriptRunsAsSingleUndoStep` (permission denial verified) |
-| Extensions (scripts, presets, composite effects; signed or dev mode) | Implemented | host package/extension tests |
-| Tracking (point, two-point) and stabilization | Implemented | host tracking tests |
-| Accessibility: 48 dp targets, content descriptions, UI scale, reduced motion | Implemented | UiE2ETest locates controls by content description |
+These are documented in [CLOUD_ANDROID_TESTING.md](CLOUD_ANDROID_TESTING.md):
 
-## Known limitations
+* **Android 11's "Lost network stack" crash loop** of `system_server`: rate-limited through DeviceConfig.
+* **"System UI isn't responding" dialogs** covering the app: `hide_error_dialogs`.
+* **Debuggable apps can't be AOT-compiled beyond `quicken`.** Compose then runs through the JIT, which under software emulation stalls the UI thread into input-dispatch ANRs. Device tests therefore target the **`uitest`** build type (debug-signed, not debuggable, AOT `speed`).
+* **Builds while tests run can kill `system_server`.** The runner waits for a stable `system_server` PID.
 
-These are stated in the app's Developer Center and in the README:
+## Not verified here
 
-* **GPU renderer:** not implemented. The CPU compositor adapts preview resolution instead.
-* **Native/WASM extensions:** rejected.
-* **FBX import:** not supported.
-* **Speaker diarization:** not implemented; the speaker field is edited manually.
-* **Planar tracking:** not implemented.
-* **Whisper model:** only English tiny is bundled; other ggml models can be imported offline.
-* **Emulator performance:** the emulator in this environment ran without hardware acceleration, so timings there say nothing about phone performance.
+* Real phones, GPU drivers, vendor codecs, and performance and thermals. The emulator is software-only. A device matrix (KVM emulators for API 24/30/33/34, phone/tablet, portrait/landscape) and an optional Firebase Test Lab job on physical devices are configured in `.github/workflows/device-matrix.yml` but haven't been run from here.
+* Gesture-level UI interactions: drag-to-trim, pinch, two-finger cancel, multi-select drags. The engine operations behind them are verified; the gestures themselves aren't automated yet.

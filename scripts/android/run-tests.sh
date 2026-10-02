@@ -18,9 +18,10 @@ install app/build/outputs/apk/uitest/app-uitest.apk || exit 1
 install app/build/outputs/apk/androidTest/uitest/app-uitest-androidTest.apk || exit 1
 # AOT-compile both APKs: removes runtime class verification/JIT, which on a software-emulated CPU can block
 # the UI thread long enough for input-dispatch ANRs (keyDispatchingTimedOut) on first use of Compose screens.
-aot() {  # retry until dexopt reports the speed profile (the package service is often busy right after install)
-  for i in 1 2 3 4 5; do
-    adb shell cmd package compile -m speed -f "$1" >/dev/null 2>&1
+aot() {  # speed-profile: hot paths from the baseline profiles in the APK. A full "speed" compile fails here
+  # (dex2oat gives up on the very large dex from material-icons-extended).
+  for i in 1 2 3; do
+    adb shell cmd package compile -m speed-profile -f "$1" >/dev/null 2>&1
     adb shell dumpsys package dexopt 2>/dev/null | grep -A3 "\[$1\]" | grep -q "status=speed" && return 0
     sleep 15
   done

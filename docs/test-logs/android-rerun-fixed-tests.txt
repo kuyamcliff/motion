@@ -1,0 +1,204 @@
+stable (system_server 9084)
+Performing Streamed Install
+Success
+Performing Streamed Install
+Success
+INSTRUMENTATION_STATUS: class=com.motionforge.app.VideoLayerDeviceTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=
+com.motionforge.app.VideoLayerDeviceTest:
+INSTRUMENTATION_STATUS: test=importedVideoDecodesAndComposites
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.VideoLayerDeviceTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=importedVideoDecodesAndComposites
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.CapsuleScriptDeviceTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=
+com.motionforge.app.CapsuleScriptDeviceTest:
+INSTRUMENTATION_STATUS: test=scriptApiV2DrivesEveryAreaAsOneUndoStep
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.CapsuleScriptDeviceTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=scriptApiV2DrivesEveryAreaAsOneUndoStep
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.CapsuleScriptDeviceTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=capsuleTypedControlsAndPackageRoundTrip
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.CapsuleScriptDeviceTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Values should be different. Actual: -4799632236927660277
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failEquals(Assert.java:187)
+	at org.junit.Assert.assertNotEquals(Assert.java:201)
+	at org.junit.Assert.assertNotEquals(Assert.java:213)
+	at com.motionforge.app.CapsuleScriptDeviceTest.capsuleTypedControlsAndPackageRoundTrip$lambda$4(CapsuleScriptDeviceTest.kt:81)
+	at com.motionforge.app.CapsuleScriptDeviceTest.$r8$lambda$ThduOcpRjVUWaRb3q0NyE5LcQpw(Unknown Source:0)
+	at com.motionforge.app.CapsuleScriptDeviceTest$$ExternalSyntheticLambda2.invoke(D8$$SyntheticClass:0)
+	at com.motionforge.app.CapsuleScriptDeviceTest.withProject(CapsuleScriptDeviceTest.kt:39)
+	at com.motionforge.app.CapsuleScriptDeviceTest.capsuleTypedControlsAndPackageRoundTrip(CapsuleScriptDeviceTest.kt:71)
+
+INSTRUMENTATION_STATUS: stream=
+Error in capsuleTypedControlsAndPackageRoundTrip(com.motionforge.app.CapsuleScriptDeviceTest):
+java.lang.AssertionError: Values should be different. Actual: -4799632236927660277
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failEquals(Assert.java:187)
+	at org.junit.Assert.assertNotEquals(Assert.java:201)
+	at org.junit.Assert.assertNotEquals(Assert.java:213)
+	at com.motionforge.app.CapsuleScriptDeviceTest.capsuleTypedControlsAndPackageRoundTrip$lambda$4(CapsuleScriptDeviceTest.kt:81)
+	at com.motionforge.app.CapsuleScriptDeviceTest.$r8$lambda$ThduOcpRjVUWaRb3q0NyE5LcQpw(Unknown Source:0)
+	at com.motionforge.app.CapsuleScriptDeviceTest$$ExternalSyntheticLambda2.invoke(D8$$SyntheticClass:0)
+	at com.motionforge.app.CapsuleScriptDeviceTest.withProject(CapsuleScriptDeviceTest.kt:39)
+	at com.motionforge.app.CapsuleScriptDeviceTest.capsuleTypedControlsAndPackageRoundTrip(CapsuleScriptDeviceTest.kt:71)
+
+INSTRUMENTATION_STATUS: test=capsuleTypedControlsAndPackageRoundTrip
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=
+com.motionforge.app.ScreensE2ETest:
+INSTRUMENTATION_STATUS: test=extensions_installEnableUseUninstall
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=extensions_installEnableUseUninstall
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=exportScreen_gifAndMp4ThroughQueue
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=exportScreen_gifAndMp4ThroughQueue
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=6
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=timePanelAndCommandPalette
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=6
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=timePanelAndCommandPalette
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=7
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=projectInspectorAndPerformance
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=7
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=projectInspectorAndPerformance
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=8
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=homeScreens_fontsModelsSettingsDevCenter
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.ScreensE2ETest
+INSTRUMENTATION_STATUS: current=8
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stack=androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 90000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:504)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:339)
+	at com.motionforge.app.ScreensE2ETest.waitFor(ScreensE2ETest.kt:66)
+	at com.motionforge.app.ScreensE2ETest.waitText(ScreensE2ETest.kt:67)
+	at com.motionforge.app.ScreensE2ETest.tap(ScreensE2ETest.kt:80)
+	at com.motionforge.app.ScreensE2ETest.homeScreens_fontsModelsSettingsDevCenter(ScreensE2ETest.kt:355)
+
+INSTRUMENTATION_STATUS: stream=
+Error in homeScreens_fontsModelsSettingsDevCenter(com.motionforge.app.ScreensE2ETest):
+androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 90000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:504)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:339)
+	at com.motionforge.app.ScreensE2ETest.waitFor(ScreensE2ETest.kt:66)
+	at com.motionforge.app.ScreensE2ETest.waitText(ScreensE2ETest.kt:67)
+	at com.motionforge.app.ScreensE2ETest.tap(ScreensE2ETest.kt:80)
+	at com.motionforge.app.ScreensE2ETest.homeScreens_fontsModelsSettingsDevCenter(ScreensE2ETest.kt:355)
+
+INSTRUMENTATION_STATUS: test=homeScreens_fontsModelsSettingsDevCenter
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.motionforge.app.WorkflowRegressionTest
+INSTRUMENTATION_STATUS: current=9
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=
+com.motionforge.app.WorkflowRegressionTest:
+INSTRUMENTATION_STATUS: test=fullCreatorWorkflowEndsInVerifiedExport
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.WorkflowRegressionTest
+INSTRUMENTATION_STATUS: current=9
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=9
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=fullCreatorWorkflowEndsInVerifiedExport
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_RESULT: stream=
+
+Time: 2,731.321
+There were 2 failures:
+1) capsuleTypedControlsAndPackageRoundTrip(com.motionforge.app.CapsuleScriptDeviceTest)
+java.lang.AssertionError: Values should be different. Actual: -4799632236927660277
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failEquals(Assert.java:187)
+	at org.junit.Assert.assertNotEquals(Assert.java:201)
+	at org.junit.Assert.assertNotEquals(Assert.java:213)
+	at com.motionforge.app.CapsuleScriptDeviceTest.capsuleTypedControlsAndPackageRoundTrip$lambda$4(CapsuleScriptDeviceTest.kt:81)
+	at com.motionforge.app.CapsuleScriptDeviceTest.$r8$lambda$ThduOcpRjVUWaRb3q0NyE5LcQpw(Unknown Source:0)
+	at com.motionforge.app.CapsuleScriptDeviceTest$$ExternalSyntheticLambda2.invoke(D8$$SyntheticClass:0)
+	at com.motionforge.app.CapsuleScriptDeviceTest.withProject(CapsuleScriptDeviceTest.kt:39)
+	at com.motionforge.app.CapsuleScriptDeviceTest.capsuleTypedControlsAndPackageRoundTrip(CapsuleScriptDeviceTest.kt:71)
+2) homeScreens_fontsModelsSettingsDevCenter(com.motionforge.app.ScreensE2ETest)
+androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 90000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:504)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:339)
+	at com.motionforge.app.ScreensE2ETest.waitFor(ScreensE2ETest.kt:66)
+	at com.motionforge.app.ScreensE2ETest.waitText(ScreensE2ETest.kt:67)
+	at com.motionforge.app.ScreensE2ETest.tap(ScreensE2ETest.kt:80)
+	at com.motionforge.app.ScreensE2ETest.homeScreens_fontsModelsSettingsDevCenter(ScreensE2ETest.kt:355)
+
+FAILURES!!!
+Tests run: 9,  Failures: 2
+
+
+INSTRUMENTATION_CODE: -1
