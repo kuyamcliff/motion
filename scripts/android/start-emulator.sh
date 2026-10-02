@@ -25,6 +25,9 @@ harden() {
     # System "isn't responding" dialogs (frequent on a slow emulator) steal focus from the app under test.
     adb shell "settings put global hide_error_dialogs 1; settings put global show_first_crash_dialog 0; \
                settings put secure anr_show_background 0" >/dev/null 2>&1
+    # Wi-Fi/mobile data are not needed by the tests; on a slow emulator WifiHandlerThread can crash
+    # system_server ("Could not fetch IpMemoryStore") when the network stack is late to answer.
+    adb shell "svc wifi disable; svc data disable" >/dev/null 2>&1
     [ "$(timeout 15 adb shell device_config get connectivity always_ratelimit_networkstack_crash 2>/dev/null | tr -d '\r')" = true ] && return 0
     sleep 10
   done
