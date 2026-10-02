@@ -55,10 +55,25 @@ class MfApplication : Application() {
                     tmp.renameTo(out)
                 }
             }
+            // Fonts are small and needed by the engine at init: copy synchronously.
             copyDir("fonts", File(ctx.filesDir, "bundled_fonts"))
-            copyDir("models", File(ctx.filesDir, "models"))
-            copyDir("samples", File(ctx.filesDir, "samples"))
+            // The 31 MB speech model and samples are copied in the background so the first launch never
+            // blocks the main thread (ANR risk on low-end phones). Files appear atomically (tmp + rename).
+            Thread({
+                try {
+                    copyDir("models", File(ctx.filesDir, "models"))
+                    copyDir("samples", File(ctx.filesDir, "samples"))
+                } finally {
+                    assetsReady.countDown()
+                }
+            }, "mf-assets").start()
         }
+
+        private val assetsReady = java.util.concurrent.CountDownLatch(1)
+
+        /** Waits until the bundled model and samples are installed (instant after the first launch). */
+        fun awaitBundledAssets(timeoutMs: Long = 120_000): Boolean = assetsReady.await(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS)
+        val bundledAssetsReady: Boolean get() = assetsReady.count == 0L
     }
 }
 

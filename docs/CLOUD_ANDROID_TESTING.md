@@ -69,7 +69,8 @@ adb logcat -d -b crash                                            # crashes
 8. **Use `scripts/android/wait-stable.sh` before installing** after any disturbance. It waits for the same `system_server` PID for 2 minutes with core services registered.
 9. **More vCPUs help.** Software emulation runs one thread per vCPU; `-cores 4` on a 4-core container noticeably shortens boot and test time.
 10. **Don't edit a shell script while it's running.** Bash reads scripts as it executes them.
-11. **`adb logcat -d` can take minutes** on a slow emulator. Filter with `-b crash` or `-t N`, and wrap commands in `timeout`.
+11. **AOT-compile the app before UI tests** (`cmd package compile -m speed -f`). Debug builds otherwise verify and JIT Compose classes on first use. Under software emulation that can freeze the UI thread for over 15 s and cause `keyDispatchingTimedOut` ANRs, which abort the instrumentation run. `run-tests.sh` compiles the app and runs **one instrumentation per test class**, so a crash or ANR can't abort the other classes.
+12. **`adb logcat -d` can take minutes** on a slow emulator. Filter with `-b crash` or `-t N`, and wrap commands in `timeout`.
 
 ## Device matrix
 

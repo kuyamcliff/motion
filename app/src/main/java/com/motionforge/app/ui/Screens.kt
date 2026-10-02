@@ -222,7 +222,9 @@ fun CaptionStudioScreen(app: AppState) {
     val capLayer = st.layers.firstOrNull { it.optString("type") == "captions" }
     val items = capLayer?.obj("captions")?.arr("items")?.objects() ?: emptyList()
     val style = capLayer?.obj("captions")?.obj("style") ?: JSONObject()
-    val model = remember { Settings.asrModel.ifEmpty { File(ctx.filesDir, "models").listFiles()?.firstOrNull { it.name.endsWith(".bin") }?.absolutePath ?: "" } }
+    var assetsReady by remember { mutableStateOf(com.motionforge.app.MfApplication.bundledAssetsReady) }
+    LaunchedEffect(Unit) { if (!assetsReady) { withContext(Dispatchers.IO) { com.motionforge.app.MfApplication.awaitBundledAssets() }; assetsReady = true } }
+    val model = remember(assetsReady) { Settings.asrModel.ifEmpty { File(ctx.filesDir, "models").listFiles()?.firstOrNull { it.name.endsWith(".bin") }?.absolutePath ?: "" } }
     val saveSub = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri: Uri? ->
         if (uri != null) {
             val fmt = uri.toString().substringAfterLast('.').lowercase().takeIf { it in setOf("srt", "vtt", "ass") } ?: "srt"
@@ -233,7 +235,8 @@ fun CaptionStudioScreen(app: AppState) {
     }
     ScreenScaffold(app, "Caption Studio") {
         SectionTitle("Generate captions offline", "Speech is recognized on this device with Whisper (whisper.cpp). Audio never leaves the phone and no network is used.")
-        if (model.isEmpty()) {
+        if (!assetsReady) SmallLabel("Preparing the offline speech model (first launch)…")
+        else if (model.isEmpty()) {
             Text("No speech model installed.", color = Color(0xFFFF7A7A))
             Chip("Open AI Models") { app.go(Screen.Models) }
         } else SmallLabel("Model: ${File(model).name}")

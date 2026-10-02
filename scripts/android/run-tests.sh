@@ -16,14 +16,30 @@ scripts/android/wait-stable.sh || true
 install() { for i in 1 2 3 4 5; do adb install -r -t "$1" && return 0; sleep 20; done; return 1; }
 install app/build/outputs/apk/debug/app-debug.apk || exit 1
 install app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk || exit 1
-args=(-w -r)
-if [ -n "$FILTER" ]; then
-  if [[ "$FILTER" == *.*[A-Z]* ]]; then args+=(-e class "$FILTER"); else args+=(-e package "$FILTER"); fi
-fi
+# AOT-compile both APKs: removes runtime class verification/JIT, which on a software-emulated CPU can block
+# the UI thread long enough for input-dispatch ANRs (keyDispatchingTimedOut) on first use of Compose screens.
+adb shell cmd package compile -m speed -f com.motionforge.mobile >/dev/null 2>&1 || true
+adb shell cmd package compile -m speed -f com.motionforge.mobile.test >/dev/null 2>&1 || true
 stamp=$(date +%Y%m%d-%H%M%S)
 adb logcat -c || true
-adb shell am instrument "${args[@]}" com.motionforge.mobile.test/androidx.test.runner.AndroidJUnitRunner | tee "$OUT/instrument-$stamp.txt"
+run_one() {  # $1 = -e key, $2 = value (optional)
+  if [ -n "${2:-}" ]; then adb shell am instrument -w -r -e "$1" "$2" com.motionforge.mobile.test/androidx.test.runner.AndroidJUnitRunner
+  else adb shell am instrument -w -r com.motionforge.mobile.test/androidx.test.runner.AndroidJUnitRunner; fi
+}
+if [ -n "$FILTER" ]; then
+  if [[ "$FILTER" == *.*[A-Z]* ]]; then run_one class "$FILTER"; else run_one package "$FILTER"; fi | tee "$OUT/instrument-$stamp.txt"
+else
+  # One instrumentation per class: a crash/ANR in one class cannot abort the others.
+  : > "$OUT/instrument-$stamp.txt"
+  for c in EngineE2ETest UiE2ETest ScreensE2ETest WorkflowRegressionTest CombinationsDeviceTest VideoLayerDeviceTest CapsuleScriptDeviceTest; do
+    echo "=== com.motionforge.app.$c" | tee -a "$OUT/instrument-$stamp.txt"
+    run_one class "com.motionforge.app.$c" | tee -a "$OUT/instrument-$stamp.txt"
+    scripts/android/wait-stable.sh >/dev/null || true
+  done
+  passed=$(grep -c "^OK (" "$OUT/instrument-$stamp.txt"); total=7
+  echo "SUMMARY: $passed/$total classes fully passed" | tee -a "$OUT/instrument-$stamp.txt"
+fi
 adb logcat -d > "$OUT/logcat-$stamp.txt" 2>/dev/null || true
 mkdir -p "$OUT/failures-$stamp" && adb exec-out run-as com.motionforge.mobile tar c files/test-failures 2>/dev/null | tar x -C "$OUT/failures-$stamp" 2>/dev/null; adb shell run-as com.motionforge.mobile rm -rf files/test-failures >/dev/null 2>&1
 adb shell screencap -p /sdcard/last.png && adb pull /sdcard/last.png "$OUT/screen-$stamp.png" >/dev/null 2>&1 || true
-grep -q "^OK (" "$OUT/instrument-$stamp.txt"
+! grep -qE "^FAILURES|shortMsg|Process crashed" "$OUT/instrument-$stamp.txt"

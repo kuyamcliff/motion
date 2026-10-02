@@ -36,6 +36,7 @@ import java.io.File
 @RunWith(AndroidJUnit4::class)
 class WorkflowRegressionTest {
     @get:org.junit.Rule val artifacts = FailureArtifacts()
+    @org.junit.Before fun bundledAssets() { org.junit.Assert.assertTrue("bundled model/samples installed", MfApplication.awaitBundledAssets()) }
     private val ctx get() = InstrumentationRegistry.getInstrumentation().targetContext
 
     private fun createAndOpen(st: EditorState, name: String, dur: Double): String {

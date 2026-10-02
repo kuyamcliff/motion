@@ -39,6 +39,7 @@ import java.io.File
 class ScreensE2ETest {
     @get:Rule val compose = createEmptyComposeRule()
     @get:Rule val artifacts = FailureArtifacts()
+    @org.junit.Before fun bundledAssets() { org.junit.Assert.assertTrue("bundled model/samples installed", MfApplication.awaitBundledAssets()) }
     private lateinit var scenario: ActivityScenario<MainActivity>
     private lateinit var app: AppState
     private val name = "Screens ${System.nanoTime() % 1_000_000}"

@@ -33,6 +33,7 @@ import java.io.File
 @RunWith(AndroidJUnit4::class)
 class EngineE2ETest {
     @get:org.junit.Rule val artifacts = FailureArtifacts()
+    @org.junit.Before fun bundledAssets() { org.junit.Assert.assertTrue("bundled model/samples installed", MfApplication.awaitBundledAssets()) }
     private val ctx get() = InstrumentationRegistry.getInstrumentation().targetContext
     private lateinit var st: EditorState
     private var projectId = ""
