@@ -9,3 +9,5 @@ app/build/
 app/.cxx/
 captures/
 .externalNativeBuild/
+.mfdata/
+captions.srt
