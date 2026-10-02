@@ -10,9 +10,18 @@ These results were produced in the build environment: Linux host, and an Android
 | Scenario `basic_edit.mftest` (create → animate → split → undo/redo → save/reopen → render → GIF export → validate → WAV) | **PASS** | `test-logs/host-scenarios.txt` |
 | Scenario `whisper_captions.mftest` (offline Whisper on JFK sample → SRT export → validate) | **PASS**, transcript exact | `test-logs/host-scenarios.txt` |
 | Android `EngineE2ETest` (7 tests, on emulator) | **7 / 7 pass** | `test-logs/android-EngineE2ETest.txt` |
-| Android `UiE2ETest` (real UI driven by Compose test) | see `test-logs/android-UiE2ETest.txt` | `test-logs/android-UiE2ETest.txt` |
+| Android `UiE2ETest` (real UI: new project → add text → undo/redo buttons → frame step → play → pause via Space → save → back → reopen) | **1 / 1 pass** | `test-logs/android-UiE2ETest.txt` |
+| Full instrumented suite on the final build (both classes) | **8 / 8 pass** | `test-logs/android-full-suite.txt` |
 | `assembleDebug` (arm64-v8a + x86_64) | builds | — |
 | `assembleRelease` (arm64-v8a + x86_64, signed with the debug key) | builds; `apksigner verify` OK | — |
+
+## Bugs found by the E2E tests and fixed
+
+* Playback crash: the AudioTrack was released while its writer thread was blocked in `write()`. The writer now owns the track's lifetime.
+* UI thread starvation during playback (ANR on slow devices). Three fixes:
+  * the frame loop no longer spins;
+  * the render thread runs at normal priority, and the engine pool leaves one core for the UI;
+  * the inspector pauses while playing.
 
 ## Feature → evidence
 
