@@ -1,0 +1,26 @@
+# Create a project, add and animate a title, split, undo/redo, save/reopen and export.
+CREATE project 1280x720 30fps duration 3
+IMPORT video generator:counter duration 3
+ADD text "Hi"
+SET text = "Hello"
+ADD keyframe position t=0
+SET position = [200,500]
+ADD keyframe position t=1s
+SET position = [1100,500]
+APPLY glow
+TIME 0.5
+EXPECT position == [650,500]
+EXPECT text == "Hello"
+SPLIT 1.5
+EXPECT layers == 3
+UNDO
+EXPECT layers == 2
+REDO
+EXPECT layers == 3
+SAVE
+REOPEN
+EXPECT layers == 3
+RENDER frame.png 0.5
+EXPORT gif out.gif fps 10 scale 0.25
+VALIDATE
+EXPORT wav out.wav

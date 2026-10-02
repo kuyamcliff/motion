@@ -1,0 +1,6 @@
+# Offline captions with whisper.cpp on the bundled JFK sample (run from the repo root as workdir).
+CREATE project 1280x720 30fps duration 11
+IMPORT audio third_party/whisper.cpp/samples/jfk.wav duration 11
+CAPTIONS
+EXPORT srt captions.srt
+VALIDATE

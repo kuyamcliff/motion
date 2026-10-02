@@ -1,0 +1,34 @@
+CREATE project 1280x720 30fps duration 3
+IMPORT video generator:counter duration 3
+ADD text "Hi"
+SET text = "Hello"
+ADD keyframe position t=0
+SET position = [200,500]
+ADD keyframe position t=1s
+SET position = [1100,500]
+APPLY glow
+TIME 0.5
+EXPECT position == [650,500]
+EXPECT text == "Hello"
+SPLIT 1.5
+EXPECT layers == 3
+UNDO
+EXPECT layers == 2
+REDO
+EXPECT layers == 3
+SAVE
+REOPEN
+EXPECT layers == 3
+RENDER frame.png 0.5
+EXPORT gif out.gif fps 10 scale 0.25
+VALIDATE
+EXPORT wav out.wav
+PASS
+outputs: {"exportFrames":30,"lastAsset":"A2","lastExport":"/tmp/claude-0/scn1/out.wav","lastRender":"/tmp/claude-0/scn1/frame.png","lastRenderHash":"1667332733522300727","projectId":"p8fb10fc3"}
+CREATE project 1280x720 30fps duration 11
+IMPORT audio third_party/whisper.cpp/samples/jfk.wav duration 11
+CAPTIONS
+EXPORT srt captions.srt
+VALIDATE
+PASS
+outputs: {"lastAsset":"A2","lastExport":"/home/user/motion/captions.srt","projectId":"p6688b3b7","transcript":"And so my fellow Americans\nask not what your country can do for you ask what\nyou can do for your country. "}
