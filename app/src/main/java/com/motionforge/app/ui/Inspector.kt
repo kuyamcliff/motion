@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -339,14 +340,17 @@ fun EffectsPanel(app: AppState, layer: JSONObject) {
 fun EffectBrowser(st: EditorState, onDismiss: () -> Unit, onPick: (String) -> Unit) {
     var q by remember { mutableStateOf("") }
     var cat by remember { mutableStateOf("") }
-    val all = st.registries.arr("effects").objects()
-    val cats = all.map { it.optString("category") }.distinct()
+    val all = remember(st.registries) { st.registries.arr("effects").objects() }
+    val cats = remember(all) { all.map { it.optString("category") }.distinct() }
+    val shown = remember(all, q, cat) { all.filter { (cat.isEmpty() || it.optString("category") == cat) && (q.isBlank() || it.optString("name").contains(q, true) || it.optString("type").contains(q, true)) } }
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Effects") }, text = {
         Column {
             OutlinedTextField(q, { q = it }, placeholder = { Text("Search effects (e.g. glow, blur, key)") }, singleLine = true)
             FlowRow { Chip("All", cat.isEmpty()) { cat = "" }; cats.forEach { c -> Chip(c, cat == c) { cat = c } } }
-            Column(Modifier.verticalScroll(rememberScrollState())) {
-                all.filter { (cat.isEmpty() || it.optString("category") == cat) && (q.isBlank() || it.optString("name").contains(q, true) || it.optString("type").contains(q, true)) }.forEach { e ->
+            // Lazy: only visible rows are composed (opening the browser must stay fast on low-end phones).
+            androidx.compose.foundation.lazy.LazyColumn(Modifier.heightIn(max = 420.dp)) {
+                items(shown.size, key = { shown[it].optString("type") }) { i ->
+                    val e = shown[i]
                     Row(Modifier.fillMaxWidth().clickable { onPick(e.optString("type")); onDismiss() }.padding(vertical = 10.dp)) {
                         Column(Modifier.weight(1f)) {
                             Text(e.optString("name"))

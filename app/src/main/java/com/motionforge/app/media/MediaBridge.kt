@@ -59,9 +59,10 @@ object MediaBridge {
     @JvmStatic
     fun videoFrame(assetJson: String, timeSec: Double, maxW: Int, maxH: Int): Bitmap? {
         val asset = JSONObject(assetJson)
-        val id = asset.optString("id")
         val src = source(asset)
         if (src.isEmpty()) return null
+        // Decoder per (asset, source): a relinked asset keeps its id but must decode the new file.
+        val id = asset.optString("id") + "|" + src
         val dec = synchronized(decoders) {
             decoders[id] ?: try {
                 VideoDecoder(src).also {
@@ -285,6 +286,7 @@ class VideoDecoder(src: String) {
     private var lastPts = Long.MIN_VALUE
     private var lastBitmap: Bitmap? = null
     private var inputDone = false
+    private var producedOutput = false
     private val frameUs: Long
 
     init {
@@ -312,7 +314,10 @@ class VideoDecoder(src: String) {
         if (cached != null && us >= lastPts && us < lastPts + frameUs) return cached
         if (lastPts == Long.MIN_VALUE || us < lastPts || us > lastPts + 1_500_000) {
             extractor.seekTo(us, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
-            codec.flush()
+            // Never flush a codec that has not produced output yet: flushing right after start() discards the
+            // codec-specific data (H.264 SPS/PPS) and the decoder then emits garbage (green) frames until an IDR
+            // with in-band parameter sets arrives. Nothing has been queued yet, so repositioning is enough.
+            if (producedOutput) codec.flush()
             inputDone = false
             lastBitmap = null
         }
@@ -329,6 +334,7 @@ class VideoDecoder(src: String) {
                 }
             }
             val oi = codec.dequeueOutputBuffer(info, 4000)
+            if (oi >= 0 || oi == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) producedOutput = true
             if (oi >= 0) {
                 val eos = info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0
                 val pts = info.presentationTimeUs

@@ -106,7 +106,10 @@ mf::ImagePtr AndroidMediaProvider::videoFrame(const mf::json& asset, double st, 
     int frame = (int)std::floor(st * fps + 1e-6);
     // Quantize requested size to limit cache fragmentation.
     int bucket = maxW > 960 ? 0 : maxW > 480 ? 1 : 2;
-    std::string key = asset.value("id", std::string()) + "|" + std::to_string(frame) + "|" + std::to_string(bucket);
+    // Key on the media source too: asset ids repeat across projects and keep their id after a relink.
+    std::string src = asset.value("path", std::string());
+    if (src.empty()) src = asset.value("uri", std::string());
+    std::string key = asset.value("id", std::string()) + "|" + src + "|" + std::to_string(frame) + "|" + std::to_string(bucket);
     {
         std::lock_guard<std::mutex> lk(m_);
         if (auto c = get(key)) return c;
