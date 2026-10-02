@@ -64,7 +64,11 @@ adb logcat -d -b crash                                            # crashes
 3. **Compose idling never settles during playback.** UI tests can't use Compose finders while the player renders frames. Poll app state instead and use key events (Space toggles playback). See `UiE2ETest`.
 4. **Timeouts:** the software emulator runs about 10–50× slower than a phone. Use generous waits (60–90 s per step) and run Whisper with 4 threads.
 5. **Container restarts:** a reclaimed container loses the running emulator. Re-run `start-emulator.sh`. The AVD in `~/.android` survives within the same session.
-6. **`adb logcat -d` can take minutes** on a slow emulator. Filter with `-b crash` or `-t N`, and wrap commands in `timeout`.
+6. **"Lost network stack" framework crash loop.** On a slow device the NetworkStack process can die. After 30 minutes of uptime, Android 11 then crashes `system_server` on purpose, so zygote and every app restart, over and over. The crash buffer shows `FATAL EXCEPTION IN SYSTEM PROCESS: main ... IllegalStateException: Lost network stack`. `start-emulator.sh` rate-limits that crash through DeviceConfig (`connectivity/always_ratelimit_networkstack_crash=true`). Re-apply it after every cold boot, since the data partition is temporary.
+7. **Use `scripts/android/wait-stable.sh` before installing** after any disturbance. It waits for the same `system_server` PID for 2 minutes with core services registered.
+8. **More vCPUs help.** Software emulation runs one thread per vCPU; `-cores 4` on a 4-core container noticeably shortens boot and test time.
+9. **Don't edit a shell script while it's running.** Bash reads scripts as it executes them.
+10. **`adb logcat -d` can take minutes** on a slow emulator. Filter with `-b crash` or `-t N`, and wrap commands in `timeout`.
 
 ## Device matrix
 

@@ -94,6 +94,7 @@ class EditorUi {
     var expandedTracks by mutableStateOf(false)
     var graphPath by mutableStateOf<String?>(null)
     var historyOpen by mutableStateOf(false)
+    var multiSelect by mutableStateOf(false)
 }
 
 @Composable
@@ -176,6 +177,7 @@ fun EditorTopBar(app: AppState, ui: EditorUi) {
                     "Caption Studio" to { app.player?.pause(); app.go(Screen.Captions) },
                     "Script Studio" to { app.player?.pause(); app.go(Screen.Scripts) },
                     "Markers" to { ui.tab = InspectorTab.Markers },
+                    "Media manager" to { app.player?.pause(); app.go(Screen.Media) },
                     "Project inspector" to { app.go(Screen.Inspector) },
                     "Performance monitor" to { app.go(Screen.Performance) },
                     "Export project package" to { app.go(Screen.Export) },

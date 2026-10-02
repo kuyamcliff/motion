@@ -14,6 +14,19 @@ nohup emulator -avd "$AVD" -no-window -no-audio -no-boot-anim -no-snapshot -gpu 
 echo "emulator pid $! (log $LOG)"
 adb wait-for-device
 until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; do sleep 5; done
+# On a software-emulated device the NetworkStack process can die from slowness; Android R then deliberately
+# crashes system_server ("Lost network stack") once uptime > 30 min, restarting the whole framework.
+# Rate-limit that crash so long test runs survive.
+harden() {
+  for i in $(seq 1 60); do
+    adb shell "device_config put connectivity always_ratelimit_networkstack_crash true; \
+               device_config put connectivity min_uptime_before_crash 2147483647; \
+               device_config put connectivity min_crash_interval 2147483647" >/dev/null 2>&1
+    [ "$(timeout 15 adb shell device_config get connectivity always_ratelimit_networkstack_crash 2>/dev/null | tr -d '\r')" = true ] && return 0
+    sleep 10
+  done
+}
+harden
 ok=0
 while [ $ok -lt 6 ]; do
   if timeout 20 adb shell pm path android >/dev/null 2>&1; then ok=$((ok+1)); else ok=0; fi
@@ -40,6 +53,7 @@ wait_stable() {
   return 1
 }
 wait_stable || echo "warning: system_server did not stabilise"
+harden
 adb shell settings put global window_animation_scale 0
 adb shell settings put global transition_animation_scale 0
 adb shell settings put global animator_duration_scale 0

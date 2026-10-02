@@ -67,6 +67,7 @@ sealed class Screen {
     data object DevCenter : Screen()
     data object Inspector : Screen()
     data object Performance : Screen()
+    data object Media : Screen()
 }
 
 /** App-wide navigation and shared state. */
@@ -168,6 +169,7 @@ fun Root(app: AppState) {
             Screen.DevCenter -> DevCenterScreen(app)
             Screen.Inspector -> ProjectInspectorScreen(app)
             Screen.Performance -> PerformanceScreen(app)
+            Screen.Media -> com.motionforge.app.ui.MediaManagerScreen(app)
         }
         if (app.paletteOpen) CommandPalette(app)
         val msg = app.editor.message

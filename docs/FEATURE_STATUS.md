@@ -1,0 +1,147 @@
+# Feature status inventory
+
+Each feature is marked with the strongest evidence that currently exists for it:
+
+| Status | Meaning |
+|---|---|
+| **WORKING_ANDROID** | An automated test on an Android device or emulator exercised it end to end and verified the result: engine state, a save/reopen round trip, or pixels in an export. |
+| **WORKING_ENGINE_ONLY** | Verified by host engine tests (including combination and stress suites). The Android UI for it exists, but no device test drives it yet. |
+| **PARTIAL** | Works, with a documented limitation. |
+| **UI_ONLY** | A control exists, but the behavior behind it isn't verified, or is missing. |
+| **BROKEN** | Known not to work. |
+| **NOT_IMPLEMENTED** | Not built. |
+
+Test names refer to `app/src/androidTest/...` (device) and `engine/tests/...` (host). Latest results are in [VERIFICATION.md](VERIFICATION.md).
+
+## Projects & persistence
+| Feature | Status | Evidence |
+|---|---|---|
+| Create / open / close project | WORKING_ANDROID | UiE2ETest, ScreensE2ETest (every test) |
+| Rename / duplicate / delete project | WORKING_ENGINE_ONLY | host storage tests; UI menu not driven by a device test |
+| Save, autosave, reopen | WORKING_ANDROID | EngineE2ETest.editUndoRedoRenderAndPersist, ScreensE2ETest.saveAndReopen |
+| Crash recovery from journal | WORKING_ANDROID | EngineE2ETest.crashRecoveryFromJournal |
+| Saved versions / restore | WORKING_ANDROID (save) / WORKING_ENGINE_ONLY (restore) | ScreensE2ETest.projectInspectorAndPerformance |
+| Project packages, encryption | WORKING_ANDROID | EngineE2ETest.packageRoundTrip |
+| Package signing (Ed25519) | WORKING_ENGINE_ONLY | host packages tests |
+| Templates (save / new from template) | WORKING_ENGINE_ONLY | — |
+| Multiple compositions, switching | WORKING_ENGINE_ONLY | combo tests (precompose) |
+
+## Editing core
+| Feature | Status | Evidence |
+|---|---|---|
+| Undo / redo, one step per op | WORKING_ANDROID | UiE2ETest, EngineE2ETest; host combo suite checks undo-all/redo-all for every combination |
+| History list / jump | WORKING_ENGINE_ONLY | host document tests |
+| Command palette | WORKING_ANDROID | ScreensE2ETest.timePanelAndCommandPalette |
+| Keyboard shortcuts | WORKING_ANDROID (Space) | UiE2ETest pauses with Space; other shortcuts not driven |
+| Split / trim / move / ripple delete | WORKING_ANDROID | WorkflowRegressionTest (trim, split), ScreensE2ETest (split) |
+| Duplicate / delete / reorder layers | WORKING_ENGINE_ONLY | combo tests |
+| Precompose | WORKING_ANDROID | CombinationsDeviceTest |
+| Parenting | WORKING_ENGINE_ONLY | host render + combo tests |
+| Markers | WORKING_ENGINE_ONLY | script API v2 test |
+
+## Preview & playback
+| Feature | Status | Evidence |
+|---|---|---|
+| Play / pause / frame step | WORKING_ANDROID | UiE2ETest |
+| Audio-synced playback | PARTIAL | Runs on device; A/V sync not measured automatically |
+| Adaptive preview resolution | PARTIAL | Implemented; performance not measured on real phones |
+| Preview handles (move/scale/rotate), two-finger rotate | UI_ONLY | Gesture code present; no automated gesture test yet |
+| Mask draw, pen tool, freehand draw | UI_ONLY | Gesture code present; masks verified via panel (ScreensE2ETest) |
+| Safe areas, grid, rulers, checkerboard | UI_ONLY | Overlay toggles; not pixel-tested |
+
+## Timeline gestures
+| Feature | Status | Evidence |
+|---|---|---|
+| Trim / move clips with snapping + haptics | UI_ONLY | The engine ops are verified; the drag gesture isn't automated |
+| Two-finger pan, pinch zoom on tracks | UI_ONLY | Added in this phase |
+| Second finger cancels a drag (no commit) | UI_ONLY | Added in this phase |
+| Edge auto-scroll while dragging | UI_ONLY | Added in this phase |
+| Multi-select, moving several clips | UI_ONLY | Added in this phase (Multi-select chip) |
+| Swipe actions | NOT_IMPLEMENTED | — |
+
+## Layers, animation, effects
+| Feature | Status | Evidence |
+|---|---|---|
+| Text layer, typography, shadow/box | WORKING_ANDROID | ScreensE2ETest.textPanel_presetShadowAndPersist |
+| Text animation presets / custom animators | WORKING_ANDROID (presets) / WORKING_ENGINE_ONLY (custom) | ScreensE2ETest; script API v2 test |
+| Shapes, merge ops, path operators | WORKING_ANDROID | ScreensE2ETest.shapePanel_itemsAndPathOperators |
+| Keyframes, easing, bezier | WORKING_ANDROID | ScreensE2ETest.keyframesPanel_graphEditorEasingExpression, WorkflowRegressionTest |
+| Graph editor (view, drag keyframes) | PARTIAL | Opens on device and is verified; dragging a keyframe isn't automated |
+| Expressions | WORKING_ANDROID | ScreensE2ETest (apply + persist), host expression tests |
+| 67 effects | WORKING_ANDROID (browser, glow, invert) / WORKING_ENGINE_ONLY (all 67 × 6 layer kinds) | ScreensE2ETest, WorkflowRegressionTest (invert pixels), test_combo |
+| Masks | WORKING_ANDROID | ScreensE2ETest, WorkflowRegressionTest (mask pixels in the export) |
+| Track mattes, blend modes, adjustment layers | WORKING_ENGINE_ONLY | host render + combo tests |
+| Transitions (13) | WORKING_ANDROID (wipe) / WORKING_ENGINE_ONLY (all) | ScreensE2ETest, host render tests |
+| Behaviors (17), bake | WORKING_ANDROID (shake, bake) / WORKING_ENGINE_ONLY (all) | ScreensE2ETest |
+| Motion blur | WORKING_ENGINE_ONLY | combo tests, CombinationsDeviceTest |
+| Speed, reverse, freeze, time remap | WORKING_ENGINE_ONLY | combo tests |
+| 3D layers, camera moves, lights | WORKING_ANDROID | ScreensE2ETest.addPanel_3dCameraLightParticles |
+| 3D models (primitives) | WORKING_ANDROID | same |
+| 3D models (OBJ/GLB import) | WORKING_ENGINE_ONLY | host 3D tests |
+| Particles | WORKING_ANDROID | same |
+
+## Audio
+| Feature | Status | Evidence |
+|---|---|---|
+| Audio import & decode (MediaCodec) | WORKING_ANDROID | EngineE2ETest.whisperCaptions, WorkflowRegressionTest |
+| Volume / pan / EQ / compressor / pitch / buses / limiter | WORKING_ENGINE_ONLY | host audio tests |
+| Auto-ducking | WORKING_ENGINE_ONLY | host audio tests |
+
+## Captions (offline Whisper)
+| Feature | Status | Evidence |
+|---|---|---|
+| Whisper transcription on device | WORKING_ANDROID | EngineE2ETest, WorkflowRegressionTest |
+| Caption styles / uppercase / boxed | WORKING_ANDROID | ScreensE2ETest.captionStudio_stylesReplaceEditExport |
+| Find & replace | WORKING_ANDROID | same |
+| Split / merge / edit timing | WORKING_ENGINE_ONLY | host caption tests |
+| Edit by transcript | WORKING_ENGINE_ONLY | host caption tests |
+| SRT/VTT/ASS export | WORKING_ANDROID (SRT) | EngineE2ETest, ScreensE2ETest |
+| Speaker diarization | NOT_IMPLEMENTED | — |
+
+## Export
+| Feature | Status | Evidence |
+|---|---|---|
+| MP4 via MediaCodec + validation | WORKING_ANDROID | EngineE2ETest, WorkflowRegressionTest (pixels, tracks, duration), ScreensE2ETest (queue UI) |
+| GIF | WORKING_ANDROID | EngineE2ETest, ScreensE2ETest |
+| PNG sequence / WAV / M4A / WebM | WORKING_ENGINE_ONLY (WAV, PNG) / PARTIAL (M4A, WebM depend on device encoders) | host scenario |
+| Export queue, foreground service | WORKING_ANDROID | ScreensE2ETest.exportScreen_gifAndMp4ThroughQueue |
+
+## Media management
+| Feature | Status | Evidence |
+|---|---|---|
+| Import files (gallery/Files, multiple) | WORKING_ANDROID (import path) | WorkflowRegressionTest, ScreensE2ETest.mediaManager. The system picker itself isn't automated. |
+| Import folder | UI_ONLY | Needs the system folder picker |
+| Media manager: usage, unused, metadata | WORKING_ANDROID | ScreensE2ETest.mediaManager |
+| Replace / relink media | WORKING_ANDROID | same (**bug fixed this phase:** Relink in Project Inspector always failed) |
+| Collect media into project | WORKING_ANDROID | same |
+| Remove unused media | WORKING_ANDROID | same |
+| Clear media caches | UI_ONLY | — |
+| Thumbnails | PARTIAL | Video/image thumbnails in the media manager |
+| Proxies | NOT_IMPLEMENTED | Needs a transcoder; the adaptive preview resolution covers some of this |
+
+## Library, capsules, scripting, extensions
+| Feature | Status | Evidence |
+|---|---|---|
+| Presets: save / favorite / duplicate / delete | WORKING_ANDROID | ScreensE2ETest.library_presetFavoriteDuplicateDelete |
+| Capsules: create / insert | WORKING_ENGINE_ONLY | test_capsule |
+| Capsule v2 typed controls (text, color, size, position, intensity, speed) | WORKING_ENGINE_ONLY | test_capsule (**bug fixed:** effect-bound controls broke on insert) |
+| .mfcapsule with embedded fonts + media | WORKING_ENGINE_ONLY | test_capsule |
+| Script Studio: run example, single undo | WORKING_ANDROID | ScreensE2ETest.scriptStudio_runExampleIsOneUndoStep |
+| Script API v2 (100+ functions), UI panels | WORKING_ENGINE_ONLY | test_script_api |
+| Extensions: install / effect in browser / disable / uninstall | WORKING_ANDROID | ScreensE2ETest.extensions_installEnableUseUninstall (**bug fixed:** extension effects never appeared) |
+
+## App screens
+| Feature | Status | Evidence |
+|---|---|---|
+| Fonts screen, favorites | WORKING_ANDROID | ScreensE2ETest.homeScreens |
+| AI Models screen | WORKING_ANDROID | same |
+| Settings | WORKING_ANDROID | same |
+| Developer Center + scenario runner | WORKING_ANDROID | same |
+| Project Inspector, Performance | WORKING_ANDROID | ScreensE2ETest.projectInspectorAndPerformance |
+
+## Architecture items not yet done
+| Item | Status | Notes |
+|---|---|---|
+| GPU-first renderer (GLES/Vulkan compositor, hardware buffers) | NOT_IMPLEMENTED | Rendering is a multithreaded CPU compositor. Export already uses EGL surfaces and hardware encoders. |
+| Real-phone device matrix | NOT_IMPLEMENTED here | Configured in CI (emulators with KVM plus an optional Firebase Test Lab job). See CLOUD_ANDROID_TESTING.md. |
+| Edit performance on very large projects | PARTIAL | Each edit copies the document. 500 layers / 2000 keyframes took ~19 s to build op by op on the host (a single batch is fast). |

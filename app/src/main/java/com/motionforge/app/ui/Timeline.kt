@@ -167,6 +167,7 @@ fun Timeline(app: AppState, ui: EditorUi, modifier: Modifier) {
             Chip("Fit") { ui.timelineZoom = (800f / st.duration.toFloat()).coerceIn(8f, 1200f); scrollX = 0f }
             Chip(if (ui.expandedTracks) "Compact" else "Expand") { ui.expandedTracks = !ui.expandedTracks }
             Chip(if (Settings.snapping) "Snap on" else "Snap off", Settings.snapping) { Settings.snapping = !Settings.snapping }
+            Chip(if (ui.multiSelect) "Multi-select on" else "Multi-select", ui.multiSelect) { ui.multiSelect = !ui.multiSelect }
             SmallLabel("  pinch here to zoom · drag to pan")
         }
     }
@@ -192,6 +193,7 @@ private fun DrawScope.drawRuler(st: EditorState, pxPerSec: Float, scrollX: Float
 @Composable
 private fun LayerRow(app: AppState, ui: EditorUi, layer: JSONObject, rowH: androidx.compose.ui.unit.Dp, headerW: androidx.compose.ui.unit.Dp, pxPerSec: Float,
                      scrollX: Float, setScroll: (Float) -> Unit, snapT: (Double, String?) -> Double, setLens: (Offset?) -> Unit) {
+    val view = LocalView.current
     val st = app.editor
     val player = app.player!!
     val id = layer.optString("id")
@@ -236,8 +238,13 @@ private fun LayerRow(app: AppState, ui: EditorUi, layer: JSONObject, rowH: andro
                     detectTapGestures(
                         onTap = { p ->
                             val t = ((p.x + scrollX) / pxPerSec).toDouble()
-                            if (t >= layer.optDouble("in") && t <= layer.optDouble("out")) st.selection = setOf(id)
-                            else { st.selection = emptySet(); player.seek(st.snap(t)) }
+                            val onClip = t >= layer.optDouble("in") && t <= layer.optDouble("out")
+                            when {
+                                // Multi-select mode: taps add/remove clips; drags then move every selected clip.
+                                ui.multiSelect && onClip -> st.selection = if (id in st.selection) st.selection - id else st.selection + id
+                                onClip -> st.selection = setOf(id)
+                                else -> { if (!ui.multiSelect) st.selection = emptySet(); player.seek(st.snap(t)) }
+                            }
                         },
                         onDoubleTap = { st.selection = setOf(id); ui.tab = InspectorTab.Layer },
                         onLongPress = { p ->
@@ -260,34 +267,51 @@ private fun LayerRow(app: AppState, ui: EditorUi, layer: JSONObject, rowH: andro
                             else -> "pan"
                         }
                         var moved = false
+                        var cancelled = false
+                        var autoScroll = 0f
                         do {
                             val e = awaitPointerEvent()
-                            if (e.changes.size >= 2) { // two-finger pan of the timeline
+                            if (e.changes.count { it.pressed } >= 2) {
+                                // A second finger cancels an in-progress trim/move (nothing is committed) and
+                                // turns the gesture into two-finger pan + pinch zoom of the timeline.
+                                if (moved && (mode == "trimIn" || mode == "trimOut" || mode == "move") && !cancelled) {
+                                    st.cancelPreview(); cancelled = true; setLens(null)
+                                    if (Settings.haptics) view.performHapticFeedback(if (android.os.Build.VERSION.SDK_INT >= 30) HapticFeedbackConstants.REJECT else HapticFeedbackConstants.LONG_PRESS)
+                                }
+                                ui.timelineZoom = (ui.timelineZoom * e.calculateZoom()).coerceIn(8f, 1200f)
                                 setScroll((scrollX - e.calculatePan().x).coerceAtLeast(0f)); e.changes.forEach { it.consume() }; continue
                             }
                             val c = e.changes.first()
                             if (!c.pressed) break
-                            val dx = c.position.x - down.position.x
+                            if (cancelled) { c.consume(); continue }
+                            val dx = c.position.x - down.position.x + autoScroll
                             if (Math.abs(dx) > 8) moved = true
                             if (!moved) continue
                             dragMode = mode
-                            val t = ((c.position.x + scrollX) / pxPerSec).toDouble()
+                            // Edge auto-scroll: dragging a clip/handle near either edge scrolls the timeline.
+                            if (mode != "pan") {
+                                val edgeZone = 48f
+                                val step = when { c.position.x > size.width - edgeZone -> 12f; c.position.x < edgeZone && scrollX > 0 -> -12f; else -> 0f }
+                                if (step != 0f) { setScroll((scrollX + step).coerceAtLeast(0f)); autoScroll += step }
+                            }
+                            val t = ((c.position.x + scrollX + autoScroll) / pxPerSec).toDouble()
                             when (mode) {
                                 "trimIn" -> { setLens(Offset(c.position.x, 0f)); st.preview(jo("op" to "trimLayer", "layer" to id, "edge" to "in", "t" to snapT(t, id))) }
                                 "trimOut" -> { setLens(Offset(c.position.x, 0f)); st.preview(jo("op" to "trimLayer", "layer" to id, "edge" to "out", "t" to snapT(t, id))) }
                                 "move" -> {
                                     val dt = dx / pxPerSec
                                     val newIn = snapT(layer.optDouble("in") + dt, id)
-                                    st.preview(jo("op" to "moveLayerTime", "layers" to listOf(id), "dt" to (newIn - layer.optDouble("in"))))
+                                    val moving = if (st.selection.size > 1 && id in st.selection) st.selection.toList() else listOf(id)
+                                    st.preview(jo("op" to "moveLayerTime", "layers" to moving, "dt" to (newIn - layer.optDouble("in"))))
                                 }
                                 else -> setScroll((scrollX - (c.position.x - c.previousPosition.x)).coerceAtLeast(0f))
                             }
                             c.consume()
                         } while (true)
                         setLens(null)
-                        if (moved) when (mode) {
+                        if (moved && !cancelled) when (mode) {
                             "trimIn", "trimOut" -> st.commitPreview("Trim Clip")
-                            "move" -> st.commitPreview("Move Layer")
+                            "move" -> st.commitPreview(if (st.selection.size > 1) "Move ${st.selection.size} Layers" else "Move Layer")
                         }
                         dragMode = ""
                     }

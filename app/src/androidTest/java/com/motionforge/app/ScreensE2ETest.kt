@@ -400,4 +400,34 @@ class ScreensE2ETest {
             NativeBridge.call("uninstallExtension", jo("id" to "uitest.ext"))
         }
     }
+
+    @Test
+    fun mediaManager_relinkCollectRemoveUnused() {
+        newProject()
+        val wav = File(ctx.filesDir, "samples/speech.wav")
+        // Two imports: one used by a layer, one left unused.
+        compose.runOnIdle {
+            com.motionforge.app.ui.importIntoProject(app, ctx, android.net.Uri.fromFile(wav))
+            val unusedAsset = com.motionforge.app.media.Importer.probe(ctx, android.net.Uri.fromFile(wav), com.motionforge.app.media.Importer.Kind.AUDIO)
+            app.editor.op("addAsset", "asset" to unusedAsset.put("name", "spare.wav"))
+        }
+        poll("two assets") { app.editor.doc.arr("assets").length() == 2 }
+        tapDesc("More")
+        tap("Media manager")
+        waitFor(hasText("Used by 1 layer", substring = true))
+        waitFor(hasText("Unused", substring = true))
+        tap("Remove unused")
+        poll("unused removed") { app.editor.doc.arr("assets").length() == 1 }
+        // Relink the remaining asset to a copy of the file (explicit replace keeps the layer and its edits).
+        val copy = File(ctx.cacheDir, "speech-copy.wav").apply { wav.copyTo(this, overwrite = true) }
+        val aid = app.editor.doc.arr("assets").getJSONObject(0).getString("id")
+        compose.runOnIdle { assertTrue(com.motionforge.app.ui.MediaOps.relink(ctx, app.editor, aid, android.net.Uri.fromFile(copy))) }
+        poll("relinked") { app.editor.asset(aid)!!.optString("uri").contains("speech-copy") }
+        tap("Collect into project")
+        poll("collected") { app.editor.asset(aid)!!.optString("path").startsWith(ctx.filesDir.absolutePath) }
+        assertTrue(File(app.editor.asset(aid)!!.optString("path")).length() == wav.length())
+        // Undo restores the pre-collect link in one step.
+        compose.runOnIdle { app.editor.undo() }
+        poll("undo collect") { !app.editor.asset(aid)!!.optString("path").startsWith(ctx.filesDir.absolutePath) }
+    }
 }

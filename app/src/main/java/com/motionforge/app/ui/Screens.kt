@@ -889,15 +889,7 @@ fun ProjectInspectorScreen(app: AppState) {
     val relink = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         val aid = relinkFor
         if (uri != null && aid != null) {
-            Importer.persist(ctx, uri)
-            val a = st.asset(aid)
-            val kind = when (a?.optString("type")) { "video" -> Importer.Kind.VIDEO; "audio" -> Importer.Kind.AUDIO; else -> Importer.Kind.IMAGE }
-            val probe = try { Importer.probe(ctx, uri, kind) } catch (e: Exception) { null }
-            if (probe == null) app.toast("That file could not be read.", true)
-            else {
-                st.op("relinkAsset", "asset" to aid, "fields" to jo("uri" to probe.optString("uri"), "name" to probe.optString("name"), "checksum" to probe.optString("checksum")))
-                NativeBridge.call("clearCaches"); refresh++
-            }
+            if (MediaOps.relink(ctx, st, aid, uri)) refresh++ else app.toast("That file could not be read.", true)
         }
         relinkFor = null
     }
