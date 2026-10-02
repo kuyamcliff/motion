@@ -195,7 +195,7 @@ json effectDefaultParams(const std::string& type) {
     if (const EffectInfo* e = findEffect(type)) {
         for (auto& p : e->params) params[p.name] = json{{"v", p.def}};
     } else if (const json* c = findCompositeEffect(type)) {
-        for (auto& p : c->value("params", json::array())) params[p.value("name", "")] = json{{"v", p.value("default", json(0))}};
+        for (auto& p : jarr(*c, "params")) params[p.value("name", "")] = json{{"v", p.value("default", json(0))}};
     }
     return params;
 }

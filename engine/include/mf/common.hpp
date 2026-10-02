@@ -22,6 +22,11 @@ constexpr int kFormatVersion = 2;
 constexpr int kExtensionApiVersion = 1;
 constexpr double kPi = 3.14159265358979323846;
 
+// Safe JSON member access returning stable references (never dangling temporaries).
+// jarr/jobj return the member if it has the right type, otherwise a static empty array/object.
+const json& jarr(const json& j, const char* key);
+const json& jobj(const json& j, const char* key);
+
 // ---------------------------------------------------------------- logging
 enum class LogLevel { Error = 0, Warn, Info, Debug, Trace };
 void setLogLevel(LogLevel l);

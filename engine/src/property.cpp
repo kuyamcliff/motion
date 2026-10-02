@@ -303,7 +303,7 @@ json pasteKeyframes(const json& prop, const json& clip, double d0, double d1) {
     json p = prop.is_object() ? prop : makeProp(prop);
     double t0 = clip.value("t0", 0.0), t1 = clip.value("t1", 0.0);
     double span = t1 - t0;
-    for (auto& k : clip.value("k", json::array())) {
+    for (auto& k : jarr(clip, "k")) {
         double t = k.value("t", 0.0);
         double u = span > 1e-12 ? (t - t0) / span : 0.0;
         double nt = d0 + u * (d1 - d0);

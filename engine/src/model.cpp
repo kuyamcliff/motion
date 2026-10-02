@@ -222,7 +222,7 @@ json makeLayer(const std::string& kind, const std::string& id, const json& comp,
         else if (prim == "polygon") { item["points"] = makeProp(6.0); item["outerRadius"] = makeProp(180.0); item["rotation"] = makeProp(0.0); }
         else if (prim == "line" || prim == "arrow") { item["from"] = makeProp({-200.0, 0.0}); item["to"] = makeProp({200.0, 0.0}); item["headSize"] = makeProp(40.0); }
         else if (prim == "path") item["path"] = makeProp(opts.value("path", json{{"closed", true}, {"v", json::array({{-100, -100, 0, 0, 0, 0}, {100, -100, 0, 0, 0, 0}, {0, 100, 0, 0, 0, 0}})}}));
-        bool lineLike = prim == "line" || prim == "arrow" || (prim == "path" && !opts.value("path", json::object()).value("closed", true));
+        bool lineLike = prim == "line" || prim == "arrow" || (prim == "path" && !jobj(opts, "path").value("closed", true));
         L["shape"] = {{"items", json::array({item})},
                       {"fill", {{"enabled", !lineLike}, {"type", "solid"}, {"color", makeProp(opts.value("color", json({1.0, 0.35, 0.2, 1.0})))}, {"opacity", makeProp(100.0)},
                                 {"gradient", {{"start", makeProp({-200.0, 0.0})}, {"end", makeProp({200.0, 0.0})}, {"stops", json::array({{0, 1, 0.3, 0.2, 1}, {1, 0.2, 0.3, 1, 1}})}}}}},
@@ -347,7 +347,7 @@ json* findLayerMut(json& comp, const std::string& id) {
 }
 int layerIndex(const json& comp, const std::string& id) {
     int i = 0;
-    for (auto& l : comp.value("layers", json::array())) {
+    for (auto& l : jarr(comp, "layers")) {
         if (l.value("id", "") == id) return i;
         ++i;
     }
@@ -367,7 +367,7 @@ json* findAssetMut(json& doc, const std::string& id) {
     return nullptr;
 }
 const json* activeComp(const json& doc) {
-    std::string id = doc.value("settings", json::object()).value("activeComp", std::string());
+    std::string id = jobj(doc, "settings").value("activeComp", std::string());
     const json* c = findComp(doc, id);
     if (!c && doc.contains("comps") && !doc["comps"].empty()) return &doc["comps"][0];
     return c;
@@ -480,7 +480,7 @@ std::vector<double> keyframeTimes(const json& comp, const json* layer) {
     auto doLayer = [&](const json& l) { collectPropKeys(l, l.value("start", 0.0), out); };
     if (layer) doLayer(*layer);
     else
-        for (auto& l : comp.value("layers", json::array())) doLayer(l);
+        for (auto& l : jarr(comp, "layers")) doLayer(l);
     std::sort(out.begin(), out.end());
     out.erase(std::unique(out.begin(), out.end(), [](double a, double b) { return std::fabs(a - b) < 1e-6; }), out.end());
     return out;
@@ -488,11 +488,11 @@ std::vector<double> keyframeTimes(const json& comp, const json* layer) {
 
 std::vector<double> editPoints(const json& comp) {
     std::vector<double> out = {0.0, comp.value("duration", 0.0)};
-    for (auto& l : comp.value("layers", json::array())) {
+    for (auto& l : jarr(comp, "layers")) {
         out.push_back(l.value("in", 0.0));
         out.push_back(l.value("out", 0.0));
     }
-    for (auto& m : comp.value("markers", json::array())) out.push_back(m.value("t", 0.0));
+    for (auto& m : jarr(comp, "markers")) out.push_back(m.value("t", 0.0));
     std::sort(out.begin(), out.end());
     out.erase(std::unique(out.begin(), out.end(), [](double a, double b) { return std::fabs(a - b) < 1e-6; }), out.end());
     return out;
@@ -823,7 +823,7 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
     auto compTimeToLocal = [&](const json& L) { return layerLocalTime(L, op.value("t", 0.0)); };
 
     if (name == "batch") {
-        for (auto& sub : op.value("ops", json::array())) {
+        for (auto& sub : jarr(op, "ops")) {
             OpResult r;
             applyOne(doc, sub, r);
             for (auto& [k, v] : r.data.items()) res.data[k] = v;
@@ -874,7 +874,7 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
         return;
     }
     if (name == "addAsset") {
-        json a = op.value("asset", json::object());
+        json a = jobj(op, "asset");
         if (!a.contains("type")) throw EditError("Asset type missing.");
         a["id"] = newId(doc, "A");
         doc["assets"].push_back(a);
@@ -884,7 +884,7 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
     if (name == "updateAsset" || name == "relinkAsset") {
         json* a = findAssetMut(doc, op.value("asset", std::string()));
         if (!a) throw EditError("Asset not found.");
-        json fields = op.value("fields", json::object());
+        json fields = jobj(op, "fields");
         if (name == "relinkAsset") {
             // Never silently swap media: relink requires explicit path and records the previous checksum.
             if (!op.contains("path") && !op.contains("uri")) throw EditError("Relink needs a new file.");
@@ -913,7 +913,7 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
         json& comp = requireComp(doc, op);
         std::string kind = op.value("kind", std::string("solid"));
         std::string id = newId(doc, "L");
-        json opts = op.value("options", json::object());
+        json opts = jobj(op, "options");
         if (op.contains("at")) opts["at"] = op["at"];
         json L = makeLayer(kind, id, comp, doc, opts);
         if (L.contains("shape")) {
@@ -979,7 +979,7 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
     if (name == "setLayer") {
         json& comp = requireComp(doc, op);
         json& L = requireLayer(comp, op.value("layer", std::string()));
-        json fields = op.value("fields", json::object());
+        json fields = jobj(op, "fields");
         bool onlyLockToggle = fields.size() == 1 && fields.contains("locked");
         if (!onlyLockToggle) requireUnlocked(L);
         static const std::set<std::string> allowed = {"name", "enabled", "solo", "locked", "muted", "blend", "threeD", "guide",
@@ -1304,10 +1304,10 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
         } else if (name == "nudgeKeyframes") {
             P = propShiftKeyframes(P, op.value("dt", 1.0 / compFps(comp)));
         } else if (name == "pasteKeyframes") {
-            json clip = op.value("clip", json::object());
+            json clip = jobj(op, "clip");
             double d0 = layerLocalTime(L, op.value("d0", op.value("t", 0.0)));
             double d1 = op.contains("d1") ? layerLocalTime(L, op["d1"].get<double>()) : d0 + (clip.value("t1", 0.0) - clip.value("t0", 0.0));
-            if (!clip.value("k", json::array()).empty()) {
+            if (!jarr(clip, "k").empty()) {
                 Value sample = Value::fromJson(clip["k"][0]["v"]);
                 Value cur = evalRaw(P, lt);
                 if (sample.kind != cur.kind || (sample.kind == Value::Kind::Vector && sample.n.size() != cur.n.size() &&
@@ -1335,7 +1335,7 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
         json& L = layerOf(comp);
         if (!L.contains("text")) throw EditError("Text animators require a text layer.");
         json a = name == "textPreset" ? textPresetAnimator(op.value("preset", std::string("fadeUp")), op.value("duration", 1.0))
-                                      : op.value("animator", json::object());
+                                      : jobj(op, "animator");
         if (name == "textPreset" && op.contains("t")) {
             // Offset preset keyframes to start at the playhead.
             double lt = compTimeToLocal(L);
@@ -1361,7 +1361,7 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
         json& comp = requireComp(doc, op);
         json& L = layerOf(comp);
         if (!L.contains("shape")) throw EditError("Layer is not a shape layer.");
-        json item = op.value("item", json::object());
+        json item = jobj(op, "item");
         if (!item.contains("type")) throw EditError("Shape item needs a type.");
         item["id"] = newId(doc, "S");
         if (!item.contains("op")) item["op"] = "add";
@@ -1408,7 +1408,7 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
             int to = clampv(op.value("index", 0), 0, (int)effects.size());
             effects.insert(effects.begin() + to, e);
         } else if (name == "setEffect") {
-            json fields = op.value("fields", json::object());
+            json fields = jobj(op, "fields");
             for (auto& [k, v] : fields.items())
                 if (k == "enabled" || k == "solo" || k == "name" || k == "mix") effects[idx][k] = v;
         } else if (name == "duplicateEffect") {
@@ -1424,11 +1424,11 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
     if (name == "pasteEffects" || name == "applyPreset") {
         json& comp = requireComp(doc, op);
         json& L = layerOf(comp);
-        json preset = name == "applyPreset" ? op.value("preset", json::object()) : json{{"effects", op.value("effects", json::array())}};
+        json preset = name == "applyPreset" ? jobj(op, "preset") : json{{"effects", jarr(op, "effects")}};
         std::string mapping = op.value("mapping", std::string("skip"));
         if (mapping == "cancel") throw EditError("Preset application cancelled.");
         json skipped = json::array();
-        for (auto e : preset.value("effects", json::array())) {
+        for (auto e : jarr(preset, "effects")) {
             std::string type = e.value("type", "");
             if (!findEffect(type) && !findCompositeEffect(type)) {
                 if (mapping == "skip" || mapping == "approximate") { skipped.push_back(type); continue; }
@@ -1474,7 +1474,7 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
             if (m.value("id", "") == mid) {
                 found = true;
                 if (name == "removeMask") continue;
-                for (json tmp_ = op.value("fields", json::object()); auto& [k, v] : tmp_.items())
+                for (json tmp_ = jobj(op, "fields"); auto& [k, v] : tmp_.items())
                     if (k == "mode" || k == "inverted" || k == "name" || k == "locked") m[k] = v;
             }
             out.push_back(m);
@@ -1507,7 +1507,7 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
         if (name == "removeBehavior") {
             L["behaviors"].erase(L["behaviors"].begin() + idx);
         } else if (name == "setBehavior") {
-            for (json tmp_ = op.value("fields", json::object()); auto& [k, v] : tmp_.items())
+            for (json tmp_ = jobj(op, "fields"); auto& [k, v] : tmp_.items())
                 if (k == "enabled" || k == "audioLink") L["behaviors"][idx][k] = v;
         } else {
             bakeBehaviorToKeyframes(comp, L, idx, compFps(comp));
@@ -1546,7 +1546,7 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
                 if (m.value("id", "") == op.value("marker", std::string())) {
                     found = true;
                     if (name == "removeMarker") continue;
-                    for (json tmp_ = op.value("fields", json::object()); auto& [k, v] : tmp_.items())
+                    for (json tmp_ = jobj(op, "fields"); auto& [k, v] : tmp_.items())
                         if (k != "id") m[k] = v;
                 }
                 out.push_back(m);
@@ -1559,7 +1559,7 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
     if (name == "setMarkers") {
         json& comp = requireComp(doc, op);
         json ms = json::array();
-        for (auto m : op.value("markers", json::array())) { m["id"] = newId(doc, "K"); ms.push_back(m); }
+        for (auto m : jarr(op, "markers")) { m["id"] = newId(doc, "K"); ms.push_back(m); }
         if (op.value("append", true)) for (auto& m : ms) comp["markers"].push_back(m);
         else comp["markers"] = ms;
         return;
@@ -1580,7 +1580,7 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
             res.data["layer"] = id;
         }
         json items = json::array();
-        for (auto c : op.value("items", json::array())) {
+        for (auto c : jarr(op, "items")) {
             if (!c.contains("id") || name == "setCaptions") c["id"] = newId(doc, "Q");
             items.push_back(c);
         }
@@ -1603,7 +1603,7 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
             return;
         }
         json& c = findCaption(L, op.value("caption", std::string()));
-        for (json tmp_ = op.value("fields", json::object()); auto& [k, v] : tmp_.items()) {
+        for (json tmp_ = jobj(op, "fields"); auto& [k, v] : tmp_.items()) {
             if (k == "id") continue;
             c[k] = v;
             if (k == "text") c.erase("words");  // word timing no longer valid after manual text edit
@@ -1665,7 +1665,7 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
         json& comp = requireComp(doc, op);
         json& L = captionLayer(comp, op);
         json style = L["captions"].value("style", defaultCaptionStyle());
-        style.merge_patch(op.value("style", json::object()));
+        style.merge_patch(jobj(op, "style"));
         L["captions"]["style"] = style;
         if (op.value("saveAsPreset", false)) {
             style["name"] = op.value("presetName", std::string("Custom"));
@@ -1746,7 +1746,7 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
     }
     if (name == "setCompAudio") {
         json& comp = requireComp(doc, op);
-        comp["audio"].merge_patch(op.value("audio", json::object()));
+        comp["audio"].merge_patch(jobj(op, "audio"));
         return;
     }
     if (name == "addDuckingKeys") {
@@ -1759,7 +1759,7 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
         double base = evalRaw(prop, 0).num(0);
         prop = json{{"v", base}};
         double start = L.value("start", 0.0);
-        for (auto& r : op.value("ranges", json::array())) {
+        for (auto& r : jarr(op, "ranges")) {
             double s = r[0].get<double>() - start, e = r[1].get<double>() - start;
             prop = propSetKeyframe(prop, std::max(0.0, s - attack), base, "easeInOut");
             prop = propSetKeyframe(prop, s, base + amount, "linear");
@@ -1772,11 +1772,11 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
     if (name == "insertCapsule") {
         json& comp0 = requireComp(doc, op);
         std::string targetComp = comp0.value("id", "");
-        json cap = op.value("capsule", json::object());
+        json cap = jobj(op, "capsule");
         if (!cap.contains("comp")) throw EditError("Capsule has no composition.");
         // Re-id nested comps to avoid collisions.
         std::map<std::string, std::string> compIds;
-        json comps = cap.value("comps", json::array());
+        json comps = jarr(cap, "comps");
         comps.insert(comps.begin(), cap["comp"]);
         for (auto& c : comps) compIds[c.value("id", "")] = newId(doc, "C");
         std::map<std::string, std::string> layerIds;
@@ -1799,7 +1799,7 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
         json L = makeLayer("precomp", lid, comp, doc, {{"comp", root}, {"at", op.value("t", 0.0)}, {"name", cap.value("name", std::string("Capsule"))}});
         json controls = json::object();
         json defs = json::array();
-        for (auto ctl : cap.value("controls", json::array())) {
+        for (auto ctl : jarr(cap, "controls")) {
             // Remap bound layer ids.
             std::string bl = ctl.value("layer", "");
             if (layerIds.count(bl)) ctl["layer"] = layerIds[bl];
@@ -1820,7 +1820,7 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
         if (!L.contains("precomp")) throw EditError("Layer is not a capsule.");
         std::string ctl = op.value("control", std::string());
         bool known = false;
-        for (auto& d : L["precomp"].value("controlDefs", json::array()))
+        for (auto& d : jarr(L["precomp"], "controlDefs"))
             if (d.value("name", "") == ctl) known = true;
         if (!known) throw EditError("Capsule has no control named '" + ctl + "'.");
         L["precomp"]["controls"][ctl] = op["value"];
@@ -1860,7 +1860,7 @@ static void applyOne(json& doc, const json& op, OpResult& res) {
         Value cur = evalRaw(P, 0);
         json ks = json::array();
         Vec2 off = {op.value("offsetX", 0.0), op.value("offsetY", 0.0)};
-        for (auto& s : op.value("samples", json::array())) {
+        for (auto& s : jarr(op, "samples")) {
             double t = layerLocalTime(L, s[0].get<double>());
             json v;
             if (cur.n.size() >= 3) v = {s[1].get<double>() + off.x, s[2].get<double>() + off.y, cur.n[2]};
@@ -1883,11 +1883,11 @@ std::vector<std::string> validateProject(const json& doc) {
     if (doc.value("format", "") != "mforge") out.push_back("Missing format marker.");
     if (!doc.contains("comps") || !doc["comps"].is_array() || doc["comps"].empty()) out.push_back("Project has no compositions.");
     std::set<std::string> ids;
-    for (auto& c : doc.value("comps", json::array())) {
+    for (auto& c : jarr(doc, "comps")) {
         std::string cid = c.value("id", "");
         if (cid.empty()) out.push_back("Composition without id.");
         if (!ids.insert(cid).second) out.push_back("Duplicate id " + cid);
-        for (auto& L : c.value("layers", json::array())) {
+        for (auto& L : jarr(c, "layers")) {
             std::string lid = L.value("id", "");
             if (lid.empty()) out.push_back("Layer without id in " + cid);
             if (!ids.insert(lid).second) out.push_back("Duplicate layer id " + lid);
@@ -1902,12 +1902,12 @@ std::vector<std::string> validateProject(const json& doc) {
         stack.insert(cid);
         const json* c = findComp(doc, cid);
         if (c)
-            for (auto& L : c->value("layers", json::array()))
+            for (auto& L : jarr(*c, "layers"))
                 if (L.contains("precomp") && cyc(L["precomp"].value("comp", ""), stack)) return true;
         stack.erase(cid);
         return false;
     };
-    for (auto& c : doc.value("comps", json::array())) {
+    for (auto& c : jarr(doc, "comps")) {
         std::set<std::string> st;
         if (cyc(c.value("id", ""), st)) { out.push_back("Composition nesting cycle at " + c.value("id", "")); break; }
     }
@@ -1916,7 +1916,7 @@ std::vector<std::string> validateProject(const json& doc) {
 
 std::vector<Diagnostic> diagnoseProject(const json& doc, const std::vector<std::string>& fonts, std::function<bool(const json&)> assetAvailable) {
     std::vector<Diagnostic> out;
-    for (auto& a : doc.value("assets", json::array())) {
+    for (auto& a : jarr(doc, "assets")) {
         if (assetAvailable && !assetAvailable(a))
             out.push_back({"error", "MISSING_ASSET", "Media '" + a.value("name", "") + "' cannot be found at its recorded location.", a.value("id", ""),
                            "Relink the file, relink a folder, or search by checksum. Edits are preserved."});
@@ -1928,8 +1928,8 @@ std::vector<Diagnostic> diagnoseProject(const json& doc, const std::vector<std::
                            "Choose an HDR export when the device supports it to preserve highlights."});
     }
     std::set<std::string> fontSet(fonts.begin(), fonts.end());
-    for (auto& c : doc.value("comps", json::array())) {
-        for (auto& L : c.value("layers", json::array())) {
+    for (auto& c : jarr(doc, "comps")) {
+        for (auto& L : jarr(c, "layers")) {
             if (L.contains("text")) {
                 std::string f = L["text"].value("font", "");
                 if (!fontSet.empty() && !fontSet.count(f))
@@ -1937,7 +1937,7 @@ std::vector<Diagnostic> diagnoseProject(const json& doc, const std::vector<std::
                                    "Import the font or substitute DejaVu Sans. The original font name is kept in the project."});
             }
             int cost = 0, blurs = 0;
-            for (auto& e : L.value("effects", json::array())) {
+            for (auto& e : jarr(L, "effects")) {
                 if (!e.value("enabled", true)) continue;
                 const EffectInfo* info = findEffect(e.value("type", ""));
                 if (info) cost += info->costWeight;

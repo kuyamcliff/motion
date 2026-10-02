@@ -40,7 +40,7 @@ ShapeGeometry buildShapeGeometry(const json& shape, const EvalContext& ctx, doub
     ShapeGeometry g;
     std::vector<std::pair<std::string, Polys>> items;
     Polys strokeLines;
-    for (auto& it : shape.value("items", json::array())) {
+    for (auto& it : jarr(shape, "items")) {
         if (!it.value("enabled", true)) continue;
         Polys p = shapeItemPolys(it, ctx, tol);
         items.push_back({it.value("op", std::string("add")), p});
@@ -50,24 +50,24 @@ ShapeGeometry buildShapeGeometry(const json& shape, const EvalContext& ctx, doub
         for (auto& it : items) it.second = f(it.second);
         strokeLines = f(strokeLines);
     };
-    const json& rc = shape.value("roundCorners", json::object());
+    const json& rc = jobj(shape, "roundCorners");
     if (rc.value("enabled", false)) {
         double r = propNumber(rc, "radius", ctx, 10);
         modifyAll([&](const Polys& p) { return roundCornersPolys(p, r); });
     }
-    const json& off = shape.value("offsetPath", json::object());
+    const json& off = jobj(shape, "offsetPath");
     if (off.value("enabled", false)) {
         double a = propNumber(off, "amount", ctx, 0);
         modifyAll([&](const Polys& p) { return offsetPolysApprox(p, a); });
     }
-    const json& zz = shape.value("zigzag", json::object());
+    const json& zz = jobj(shape, "zigzag");
     if (zz.value("enabled", false)) {
         double sz = propNumber(zz, "size", ctx, 10);
         int ridges = (int)std::round(propNumber(zz, "ridges", ctx, 5));
         bool smooth = zz.value("smooth", false);
         modifyAll([&](const Polys& p) { return zigzagPolys(p, sz, ridges, smooth); });
     }
-    const json& tw = shape.value("twist", json::object());
+    const json& tw = jobj(shape, "twist");
     if (tw.value("enabled", false)) {
         double ang = deg2rad(propNumber(tw, "angle", ctx, 0));
         Rect b = polysBounds(strokeLines);
@@ -81,7 +81,7 @@ ShapeGeometry buildShapeGeometry(const json& shape, const EvalContext& ctx, doub
         };
         modifyAll([&](const Polys& p) { Polys q = p; transformPolys(q, f); return q; });
     }
-    const json& tr = shape.value("trim", json::object());
+    const json& tr = jobj(shape, "trim");
     if (tr.value("enabled", false)) {
         double s = propNumber(tr, "start", ctx, 0) / 100.0, e = propNumber(tr, "end", ctx, 100) / 100.0, o = propNumber(tr, "offset", ctx, 0) / 360.0;
         modifyAll([&](const Polys& p) {
@@ -89,13 +89,13 @@ ShapeGeometry buildShapeGeometry(const json& shape, const EvalContext& ctx, doub
             return q;
         });
     }
-    const json& st = shape.value("stroke", json::object());
+    const json& st = jobj(shape, "stroke");
     if (st.contains("dash") && st["dash"].is_array() && !st["dash"].empty()) {
         std::vector<double> dash;
         for (auto& d : st["dash"]) dash.push_back(d.get<double>());
         strokeLines = dashPolys(strokeLines, dash, propNumber(st, "dashOffset", ctx, 0));
     }
-    const json& rp = shape.value("repeater", json::object());
+    const json& rp = jobj(shape, "repeater");
     bool rep = rp.value("enabled", false);
     int copies = 1;
     Vec2 rpPos, rpScale{100, 100};
@@ -144,7 +144,7 @@ std::vector<Particle> simulateParticles(const json& P, const EvalContext& ctx, d
     int maxP = P.value("maxParticles", 4000);
     bool multicolor = P.value("multicolor", false);
     bool twinkle = P.value("twinkle", false);
-    const json& at = P.value("attractor", json::object());
+    const json& at = jobj(P, "attractor");
     bool attract = at.value("enabled", false);
     Vec2 apos = attract ? propVec2(at, "position", ctx, {0, 0}) : Vec2();
     double astr = attract ? propNumber(at, "strength", ctx, 0) : 0;

@@ -88,14 +88,14 @@ static bool layerHasAudio(const json& L) {
 
 float AudioEngine::mix(const json& project, const json& comp, double t0, int frames, float* out, int sr) {
     std::fill(out, out + (size_t)frames * 2, 0.f);
-    const json& buses = comp.value("audio", json::object()).value("buses", json::object());
+    const json& buses = jobj(jobj(comp, "audio"), "buses");
     auto busGain = [&](const std::string& b) { return dbToGain(buses.value(b, json::object()).value("gain", 0.0)); };
     bool anySolo = false;
-    for (auto& L : comp.value("layers", json::array()))
+    for (auto& L : jarr(comp, "layers"))
         if (layerHasAudio(L) && L.value("solo", false)) anySolo = true;
     std::vector<float> dialogue((size_t)frames * 2, 0.f), music((size_t)frames * 2, 0.f), effects((size_t)frames * 2, 0.f), master((size_t)frames * 2, 0.f);
     std::lock_guard<std::mutex> lk(m_);
-    for (auto& L : comp.value("layers", json::array())) {
+    for (auto& L : jarr(comp, "layers")) {
         if (!layerHasAudio(L) || L.value("muted", false) || !L.value("enabled", true)) continue;
         if (anySolo && !L.value("solo", false)) continue;
         if (L.value("freezeAt", json()).is_number()) continue;
@@ -114,14 +114,14 @@ float AudioEngine::mix(const json& project, const json& comp, double t0, int fra
         }
         st.lastT = t0 + (double)frames / sr;
         // Per-layer DSP coefficients.
-        double eqLow = A.value("eq", json::object()).value("low", 0.0), eqMid = A.value("eq", json::object()).value("mid", 0.0),
-               eqHigh = A.value("eq", json::object()).value("high", 0.0);
+        double eqLow = jobj(A, "eq").value("low", 0.0), eqMid = jobj(A, "eq").value("mid", 0.0),
+               eqHigh = jobj(A, "eq").value("high", 0.0);
         double cl[5], cm[5], ch[5];
         biquadLowShelf(sr, 200, eqLow, cl);
         biquadPeak(sr, 1000, eqMid, 0.9, cm);
         biquadHighShelf(sr, 5000, eqHigh, ch);
         bool eq = eqLow != 0 || eqMid != 0 || eqHigh != 0;
-        const json& C = A.value("compressor", json::object());
+        const json& C = jobj(A, "compressor");
         bool comp_ = C.value("enabled", false);
         double thr = dbToGain(C.value("threshold", -18.0)), ratio = std::max(1.0, C.value("ratio", 3.0));
         double denoise = A.value("denoise", 0.0) / 100.0;
@@ -197,12 +197,12 @@ float AudioEngine::mix(const json& project, const json& comp, double t0, int fra
         }
     }
     // Ducking of music bus driven by dialogue envelope.
-    const json& duck = buses.value("music", json::object()).value("duck", json::object());
+    const json& duck = jobj(jobj(buses, "music"), "duck");
     bool duckOn = duck.value("enabled", false);
     double duckAmt = dbToGain(duck.value("amount", -12.0));
     double atk = std::exp(-1.0 / (std::max(0.01, duck.value("attack", 0.15)) * sr)), rel = std::exp(-1.0 / (std::max(0.01, duck.value("release", 0.4)) * sr));
     double gm = busGain("master"), gd = busGain("dialogue"), gmu = busGain("music"), ge = busGain("effects");
-    bool limiter = buses.value("master", json::object()).value("limiter", true);
+    bool limiter = jobj(buses, "master").value("limiter", true);
     float peak = 0;
     for (int i = 0; i < frames; ++i) {
         float dl = dialogue[i * 2], dr = dialogue[i * 2 + 1];
@@ -313,7 +313,7 @@ bool AudioEngine::features(const json* comp, double t, std::map<std::string, dou
     if (!comp || !project_) return false;
     double amp = 0, rms = 0, bass = 0, mid = 0, treble = 0, beat = 0, tempo = 0, centroid = 0;
     bool any = false;
-    for (auto& L : comp->value("layers", json::array())) {
+    for (auto& L : jarr(*comp, "layers")) {
         if (!layerHasAudio(L) || L.value("muted", false) || !layerActiveAt(L, t)) continue;
         const json* a = findAsset(*project_, L.value("asset", ""));
         if (!a) continue;

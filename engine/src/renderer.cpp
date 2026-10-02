@@ -236,7 +236,7 @@ class RenderJob {
         Frame tmp = F;
         tmp.comp = &comp;
         EvalContext ctx = ctxFor(tmp, L, t);
-        const json& T = L.value("transform", json::object());
+        const json& T = jobj(L, "transform");
         ctx.propPath = "transform";
         Vec3 anchor = propVec3(T, "anchor", ctx, {0, 0, 0});
         Vec3 pos = propVec3(T, "position", ctx, {0, 0, 0});
@@ -288,7 +288,7 @@ class RenderJob {
         F.dof = false;
         const json* camL = nullptr;
         bool any3D = false;
-        for (auto& L : comp.value("layers", json::array())) {
+        for (auto& L : jarr(comp, "layers")) {
             if (!L.value("enabled", true) || !layerActiveAt(L, F.t)) continue;
             std::string ty = L.value("type", "");
             if (ty == "camera" && !camL) camL = &L;
@@ -332,7 +332,7 @@ class RenderJob {
             F.cam.position = eye;
             F.hasCamera = true;
         }
-        for (auto& L : comp.value("layers", json::array())) {
+        for (auto& L : jarr(comp, "layers")) {
             if (L.value("type", "") != "light" || !L.value("enabled", true) || !layerActiveAt(L, F.t)) continue;
             EvalContext ctx = ctxFor(F, L, F.t);
             const json& LD = L["light"];
@@ -359,7 +359,8 @@ class RenderJob {
     // Layer-space plane -> render pixels homography. Returns false if (partly) behind camera.
     bool layerHomography(const Frame& F, const json& L, const Mat4& world, Mat3& H, double* depthOut = nullptr) const {
         bool threeD = L.value("threeD", false) && F.hasCamera;
-        Vec2 src[4] = {{0, 0}, {1000, 0}, {1000, 1000}, {0, 1000}};
+        // Small reference square at the layer origin keeps all points in front of the camera for rotated layers.
+        Vec2 src[4] = {{0, 0}, {8, 0}, {8, 8}, {0, 8}};
         Vec2 dst[4];
         double dsum = 0;
         for (int i = 0; i < 4; ++i) {
@@ -418,7 +419,7 @@ class RenderJob {
             }
             Rect r = polysBounds(all);
             if (r.empty()) return false;
-            double sw = L["shape"].value("stroke", json::object()).value("enabled", false) ? propNumber(L["shape"]["stroke"], "width", ctx, 0) / 2 : 0;
+            double sw = jobj(L["shape"], "stroke").value("enabled", false) ? propNumber(L["shape"]["stroke"], "width", ctx, 0) / 2 : 0;
             x0 = r.x0 - sw; y0 = r.y0 - sw; x1 = r.x1 + sw; y1 = r.y1 + sw;
             return true;
         }
@@ -598,8 +599,8 @@ class RenderJob {
         const json* sub = findComp(*F.project, L["precomp"].value("comp", ""));
         if (!sub || F.depth > 16) return nullptr;
         double st = layerSourceTime(L, t);
-        json overrides = L["precomp"].value("controls", json::object());
-        json defs = L["precomp"].value("controlDefs", json::array());
+        json overrides = jobj(L["precomp"], "controls");
+        json defs = jarr(L["precomp"], "controlDefs");
         std::string key = formatString("pc|%llu|%s|%.6f|%.4f|", (unsigned long long)F.rs.revision, sub->value("id", "").c_str(), st, F.scale) +
                           (defs.empty() ? std::string() : overrides.dump()) + (F.rs.exportMode ? "|x" : "");
         if (F.rs.revision != 0) {
@@ -724,10 +725,10 @@ class RenderJob {
     void drawCaptions(const Frame& F, const json& L, double t, Image& dst, Rect& bounds) const {
         const json& C = L["captions"];
         const json* cur = nullptr;
-        for (auto& c : C.value("items", json::array()))
+        for (auto& c : jarr(C, "items"))
             if (t >= c.value("start", 0.0) && t < c.value("end", 0.0)) { cur = &c; break; }
         if (!cur) return;
-        const json& S = C.value("style", json::object());
+        const json& S = jobj(C, "style");
         auto font = FontManager::instance().get(S.value("font", std::string("DejaVuSans-Bold")));
         if (!font) return;
         int cw = F.comp->value("width", 1920), ch = F.comp->value("height", 1080);
@@ -774,7 +775,7 @@ class RenderJob {
         bool typewriter = ain == "typewriter";
         int speaker = cur->value("speaker", 0);
         Color fill = parseColor(S.value("color", json({1, 1, 1, 1})));
-        json sc_ = S.value("speakerColors", json::array());
+        json sc_ = jarr(S, "speakerColors");
         if (speaker > 0 && speaker < (int)sc_.size()) fill = parseColor(sc_[speaker]);
         Color hl = parseColor(S.value("highlightColor", json({1, 0.85, 0.1, 1})));
         bool highlight = S.value("highlightActiveWord", true) && activeWord >= 0;
@@ -851,7 +852,7 @@ class RenderJob {
 
     Material materialFor(const json& M, const EvalContext& ctx) const {
         Material m;
-        const json& mat = M.value("material", json::object());
+        const json& mat = jobj(M, "material");
         m.baseColor = propColor(mat, "baseColor", ctx, Color(0.8f, 0.8f, 0.8f));
         m.metallic = (float)propNumber(mat, "metallic", ctx, 0);
         m.roughness = (float)propNumber(mat, "roughness", ctx, 0.5);
@@ -949,7 +950,7 @@ class RenderJob {
         std::map<std::string, Value> out;
         EvalContext ctx = ctxFor(F, L, t);
         ctx.propPath = "effects." + effect.value("id", std::string()) + ".params";
-        for (json tmp_ = effect.value("params", json::object()); auto& [k, v] : tmp_.items()) {
+        for (json tmp_ = jobj(effect, "params"); auto& [k, v] : tmp_.items()) {
             EvalContext c = ctx;
             c.propPath += "." + k;
             if (v.is_object()) out[k] = evalProperty(v, c);
@@ -978,9 +979,9 @@ class RenderJob {
         env.spectrum = [ae, project, comp](double tt, int bands) { return ae->spectrum(*project, *comp, tt, bands); };
         env.waveform = [ae, project, comp](double tt, int n, double w) { return ae->waveform(*project, *comp, tt, n, w); };
         bool anySolo = false;
-        for (auto& e : L.value("effects", json::array()))
+        for (auto& e : jarr(L, "effects"))
             if (e.value("solo", false) || (!F.rs.soloEffect.empty() && e.value("id", "") == F.rs.soloEffect)) anySolo = true;
-        for (auto& e : L.value("effects", json::array())) {
+        for (auto& e : jarr(L, "effects")) {
             if (!e.value("enabled", true)) continue;
             bool solo = e.value("solo", false) || (!F.rs.soloEffect.empty() && e.value("id", "") == F.rs.soloEffect);
             if (anySolo && !solo) continue;
@@ -992,9 +993,9 @@ class RenderJob {
             if (mix < 0.999) before = img;
             if (const json* comp = findCompositeEffect(type)) {
                 // Extension composite effect: chain of built-ins with parameter bindings.
-                for (auto& step : comp->value("chain", json::array())) {
+                for (auto& step : jarr(*comp, "chain")) {
                     std::map<std::string, Value> sp;
-                    for (json tmp_ = step.value("params", json::object()); auto& [k, v] : tmp_.items()) {
+                    for (json tmp_ = jobj(step, "params"); auto& [k, v] : tmp_.items()) {
                         if (v.is_string() && v.get<std::string>().rfind("$", 0) == 0) {
                             std::string ref = v.get<std::string>().substr(1);
                             if (params.count(ref)) sp[k] = params[ref];
@@ -1028,7 +1029,7 @@ class RenderJob {
             p = clampv(p, 0.0, 1.0);
             p = Interp::fromJson(tr.contains("easing") ? tr["easing"] : json("easeInOut")).apply(p);
             std::string type = tr.value("type", std::string("fade"));
-            const json& P = tr.value("params", json::object());
+            const json& P = jobj(tr, "params");
             double W = F.W, H = F.H;
             double q = 1 - p;  // amount of "transition" remaining
             Mat3 m;
@@ -1083,7 +1084,7 @@ class RenderJob {
 
     void applyTransitionOps(const Frame& F, const TransitionState& ts, Image& img, Rect& bounds, double t) const {
         for (auto& [type, p] : ts.ops) {
-            const json& P = ts.tr.value("params", json::object());
+            const json& P = jobj(ts.tr, "params");
             double q = 1 - p;
             EffectEnv env;
             env.compTime = t;
@@ -1176,8 +1177,8 @@ class RenderJob {
         double depth = 0;
         bool threeD = L.value("threeD", false);
         bool meshLayer = ty == "model3d";
-        bool extrudeText = threeD && ty == "text" && L["text"].value("extrude", json::object()).value("enabled", false);
-        bool extrudeShape = threeD && ty == "shape" && L["shape"].value("extrude", json::object()).value("enabled", false);
+        bool extrudeText = threeD && ty == "text" && jobj(L["text"], "extrude").value("enabled", false);
+        bool extrudeShape = threeD && ty == "shape" && jobj(L["shape"], "extrude").value("enabled", false);
         if (!meshLayer && ty != "captions") {
             if (!layerHomography(F, L, world, H, &depth)) return false;
             if (ts.hasPost) H = ts.post * H;
@@ -1230,7 +1231,7 @@ class RenderJob {
             double tol = 0.35 / std::max(1e-3, ls);
             Color fill = propColor(T, "fill", ctx, Color(1, 1, 1));
             auto glyphs = buildGlyphs(*font, lay, anims, st.size, fill, T.value("fauxItalic", false), tol, (uint32_t)std::floor(t * 12));
-            const json& bg = T.value("background", json::object());
+            const json& bg = jobj(T, "background");
             if (bg.value("enabled", false)) {
                 double pad = propNumber(bg, "padding", ctx, 20), rad = propNumber(bg, "radius", ctx, 16);
                 double x0 = st.align == "left" ? 0 : st.align == "right" ? -lay.width : -lay.width / 2;
@@ -1243,7 +1244,7 @@ class RenderJob {
                 fillCoverage(out.img, c, p);
                 out.bounds = out.bounds.unite(c.r);
             }
-            const json& sh = T.value("shadow", json::object());
+            const json& sh = jobj(T, "shadow");
             if (sh.value("enabled", false)) {
                 Image shImg(F.W, F.H);
                 Rect sb;
@@ -1264,8 +1265,8 @@ class RenderJob {
             const json& S = L["shape"];
             double ls = hScale(H);
             ShapeGeometry g = buildShapeGeometry(S, ctx, 0.35 / std::max(1e-3, ls));
-            const json& fill = S.value("fill", json::object());
-            const json& stroke = S.value("stroke", json::object());
+            const json& fill = jobj(S, "fill");
+            const json& stroke = jobj(S, "stroke");
             Mat3 Hinv;
             H.inverse(Hinv);
             for (auto& c : g.copies) {
@@ -1310,7 +1311,7 @@ class RenderJob {
                             p.type = ft == "linear" ? Paint::Type::Linear : ft == "radial" ? Paint::Type::Radial : ft == "conic" ? Paint::Type::Conic : Paint::Type::Solid;
                             p.p0 = propVec2(G, "start", ctx, {-100, 0});
                             p.p1 = propVec2(G, "end", ctx, {100, 0});
-                            for (auto& s : G.value("stops", json::array()))
+                            for (auto& s : jarr(G, "stops"))
                                 if (s.is_array() && s.size() >= 4)
                                     p.stops.push_back({s[0].get<float>(), Color(s[1].get<float>(), s[2].get<float>(), s[3].get<float>(), s.size() > 4 ? s[4].get<float>() : 1.f)});
                             std::sort(p.stops.begin(), p.stops.end(), [](auto& a, auto& b) { return a.first < b.first; });
@@ -1475,7 +1476,7 @@ class RenderJob {
     }
 
     const json* findEffectOfType(const json& L, const char* type) const {
-        for (auto& e : L.value("effects", json::array()))
+        for (auto& e : jarr(L, "effects"))
             if (e.value("enabled", true) && e.value("type", "") == type) return &e;
         return nullptr;
     }
@@ -1488,7 +1489,7 @@ class RenderJob {
             double pf = std::max(0.1, p["fps"].num(0, 8));
             t = std::floor(t * pf + 1e-6) / pf;
         }
-        const json& mb = F.comp->value("motionBlur", json::object());
+        const json& mb = jobj(*F.comp, "motionBlur");
         int samples = 1;
         if (mb.value("enabled", false) && L.value("motionBlur", false)) {
             samples = F.rs.motionBlurSamples > 0 ? F.rs.motionBlurSamples : mb.value("samples", 8);
@@ -1574,7 +1575,7 @@ class RenderJob {
         Image acc(F.W, F.H);
         if (F.depth > 0 || !F.rs.transparentBackground) acc.fill(parseColor(comp.value("bg", json({0, 0, 0, 1}))));
         setupCamera(F);
-        const json& layers = comp.value("layers", json::array());
+        const json& layers = jarr(comp, "layers");
         // Layers used as track mattes are hidden from normal compositing.
         std::set<std::string> matteSources;
         bool anySolo = false;
@@ -1746,7 +1747,7 @@ bool Renderer::layerQuad(const json& project, const std::string& compId, const s
 std::string Renderer::hitTest(const json& project, const std::string& compId, double t, double x, double y) {
     const json* comp = findComp(project, compId);
     if (!comp) return {};
-    for (auto& L : comp->value("layers", json::array())) {
+    for (auto& L : jarr(*comp, "layers")) {
         std::string ty = L.value("type", "");
         if (!L.value("enabled", true) || !layerActiveAt(L, t) || ty == "audio" || ty == "camera" || ty == "light" || ty == "captions") continue;
         Vec2 q[4];

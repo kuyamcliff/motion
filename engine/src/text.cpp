@@ -365,8 +365,8 @@ std::vector<GlyphAnim> evalTextAnimators(const json& td, const TextLayout& layou
     if (it == td.end() || !it->is_array() || it->empty()) return out;
     for (auto& a : *it) {
         if (!a.value("enabled", true)) continue;
-        const json& sel = a.value("selector", json::object());
-        const json& pr = a.value("props", json::object());
+        const json& sel = jobj(a, "selector");
+        const json& pr = jobj(a, "props");
         double s0 = propNumber(sel, "start", ctx, 0) / 100.0;
         double s1 = propNumber(sel, "end", ctx, 100) / 100.0;
         double off = propNumber(sel, "offset", ctx, 0) / 100.0;

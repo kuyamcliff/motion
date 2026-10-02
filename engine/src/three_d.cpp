@@ -290,7 +290,7 @@ bool loadGltf(const std::string& path, Mesh& out, std::string& err) {
         return false;
     }
     std::vector<std::vector<uint8_t>> buffers;
-    for (auto& b : g.value("buffers", json::array())) {
+    for (auto& b : jarr(g, "buffers")) {
         if (b.contains("uri")) {
             std::string uri = b["uri"];
             if (uri.rfind("data:", 0) == 0) buffers.push_back(base64Decode(uri.substr(uri.find(',') + 1)));
@@ -340,9 +340,9 @@ bool loadGltf(const std::string& path, Mesh& out, std::string& err) {
     };
     // Materials.
     std::vector<Material> mats;
-    for (auto& m : g.value("materials", json::array())) {
+    for (auto& m : jarr(g, "materials")) {
         Material mat;
-        const json& pbr = m.value("pbrMetallicRoughness", json::object());
+        const json& pbr = jobj(m, "pbrMetallicRoughness");
         if (pbr.contains("baseColorFactor")) mat.baseColor = parseColor(pbr["baseColorFactor"]);
         mat.metallic = pbr.value("metallicFactor", 1.0f);
         mat.roughness = pbr.value("roughnessFactor", 1.0f);
@@ -396,7 +396,7 @@ bool loadGltf(const std::string& path, Mesh& out, std::string& err) {
         Mat4 world = parent * nodeMatrix(n);
         if (n.contains("mesh")) {
             const json& mesh = g["meshes"][n["mesh"].get<int>()];
-            for (auto& prim : mesh.value("primitives", json::array())) {
+            for (auto& prim : jarr(mesh, "primitives")) {
                 if (prim.value("mode", 4) != 4) continue;
                 const json& at = prim["attributes"];
                 if (!at.contains("POSITION")) continue;
@@ -428,11 +428,11 @@ bool loadGltf(const std::string& path, Mesh& out, std::string& err) {
                 out.append(tmp, Mat4());
             }
         }
-        for (auto& c : n.value("children", json::array())) visit(c.get<int>(), world);
+        for (auto& c : jarr(n, "children")) visit(c.get<int>(), world);
     };
     int scene = g.value("scene", 0);
     if (g.contains("scenes") && scene < (int)g["scenes"].size()) {
-        for (auto& n : g["scenes"][scene].value("nodes", json::array())) visit(n.get<int>(), Mat4());
+        for (auto& n : jarr(g["scenes"][scene], "nodes")) visit(n.get<int>(), Mat4());
     } else if (g.contains("nodes")) {
         for (size_t i = 0; i < g["nodes"].size(); ++i) visit((int)i, Mat4());
     }

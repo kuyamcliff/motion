@@ -13,6 +13,7 @@ enum class TK { Num, Str, Ident, Punct, End };
 struct Tok {
     TK k;
     std::string s;
+    int line = 1;
 };
 
 struct Bail : std::runtime_error {
@@ -22,16 +23,23 @@ struct Bail : std::runtime_error {
 std::vector<Tok> tokenize(const std::string& src) {
     std::vector<Tok> out;
     size_t i = 0, n = src.size();
+    int line = 1;
+    auto lineAt = [&](size_t upto) {
+        // count newlines consumed so far lazily
+        return line;
+    };
+    (void)lineAt;
     static const char* puncts[] = {">>>=", "===", "!==", "**=", "<<=", ">>=", ">>>", "...", "=>", "==", "!=", "<=", ">=", "&&", "||", "??", "++", "--", "+=", "-=",
                                    "*=", "/=", "%=", "&=", "|=", "^=", "**", "<<", ">>", "?.", "+", "-", "*", "/", "%", "=", "<", ">", "!", "~", "&",
                                    "|", "^", "?", ":", ";", ",", ".", "(", ")", "[", "]", "{", "}"};
     while (i < n) {
         char c = src[i];
-        if (std::isspace((unsigned char)c)) { ++i; continue; }
+        if (std::isspace((unsigned char)c)) { if (c == '\n') ++line; ++i; continue; }
         if (c == '/' && i + 1 < n && src[i + 1] == '/') { while (i < n && src[i] != '\n') ++i; continue; }
         if (c == '/' && i + 1 < n && src[i + 1] == '*') {
             size_t e = src.find("*/", i + 2);
             if (e == std::string::npos) throw Bail();
+            line += (int)std::count(src.begin() + i, src.begin() + e, '\n');
             i = e + 2;
             continue;
         }
@@ -48,13 +56,13 @@ std::vector<Tok> tokenize(const std::string& src) {
                     while (i < n && std::isdigit((unsigned char)src[i])) ++i;
                 }
             }
-            out.push_back({TK::Num, src.substr(s, i - s)});
+            out.push_back({TK::Num, src.substr(s, i - s), line});
             continue;
         }
         if (std::isalpha((unsigned char)c) || c == '_' || c == '$') {
             size_t s = i;
             while (i < n && (std::isalnum((unsigned char)src[i]) || src[i] == '_' || src[i] == '$')) ++i;
-            out.push_back({TK::Ident, src.substr(s, i - s)});
+            out.push_back({TK::Ident, src.substr(s, i - s), line});
             continue;
         }
         if (c == '"' || c == '\'') {
@@ -66,7 +74,7 @@ std::vector<Tok> tokenize(const std::string& src) {
             }
             if (i >= n) throw Bail();
             ++i;
-            out.push_back({TK::Str, src.substr(s, i - s)});
+            out.push_back({TK::Str, src.substr(s, i - s), line});
             continue;
         }
         if (c == '`') {
@@ -78,7 +86,7 @@ std::vector<Tok> tokenize(const std::string& src) {
             }
             if (i >= n) throw Bail();
             ++i;
-            out.push_back({TK::Str, src.substr(s, i - s)});
+            out.push_back({TK::Str, src.substr(s, i - s), line});
             continue;
         }
         bool matched = false;
@@ -86,7 +94,7 @@ std::vector<Tok> tokenize(const std::string& src) {
             size_t L = std::strlen(p);
             if (src.compare(i, L, p) == 0) {
                 // Regex literals are not supported (ambiguous with division).
-                out.push_back({TK::Punct, p});
+                out.push_back({TK::Punct, p, line});
                 i += L;
                 matched = true;
                 break;
@@ -94,7 +102,7 @@ std::vector<Tok> tokenize(const std::string& src) {
         }
         if (!matched) throw Bail();
     }
-    out.push_back({TK::End, ""});
+    out.push_back({TK::End, "", line});
     return out;
 }
 
@@ -111,6 +119,14 @@ class Parser {
    private:
     std::vector<Tok> t_;
     size_t p_ = 0;
+    int outLine_ = 1;
+
+    // Emit newlines so statements keep their original line numbers in error messages.
+    std::string catchUp() {
+        std::string nl;
+        while (outLine_ < cur().line) { nl += "\n"; ++outLine_; }
+        return nl;
+    }
 
     const Tok& cur() const { return t_[p_]; }
     bool at(TK k) const { return cur().k == k; }
@@ -134,6 +150,11 @@ class Parser {
     }
 
     std::string statement() {
+        std::string pre = catchUp();
+        return pre + statementBody();
+    }
+
+    std::string statementBody() {
         if (isP("{")) return block();
         if (isP(";")) { ++p_; return ";"; }
         if (isId("var") || isId("let") || isId("const")) {

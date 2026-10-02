@@ -12,6 +12,19 @@
 
 namespace mf {
 
+const json& jarr(const json& j, const char* key) {
+    static const json empty = json::array();
+    if (!j.is_object()) return empty;
+    auto it = j.find(key);
+    return (it != j.end() && it->is_array()) ? *it : empty;
+}
+const json& jobj(const json& j, const char* key) {
+    static const json empty = json::object();
+    if (!j.is_object()) return empty;
+    auto it = j.find(key);
+    return (it != j.end() && it->is_object()) ? *it : empty;
+}
+
 // ---------------------------------------------------------------- logging
 namespace {
 LogLevel g_level = LogLevel::Warn;

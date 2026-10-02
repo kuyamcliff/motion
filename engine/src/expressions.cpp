@@ -173,7 +173,7 @@ bool jsToValue(JSContext* c, JSValueConst j, const Value& like, Value& out) {
 
 const json* layerByRef(const json& comp, JSContext* c, JSValueConst ref) {
     if (JS_IsNull(ref) || JS_IsUndefined(ref)) return g_cur.ctx ? g_cur.ctx->layer : nullptr;
-    const json& layers = comp.value("layers", json::array());
+    const json& layers = jarr(comp, "layers");
     if (JS_IsNumber(ref)) {
         double d;
         JS_ToFloat64(c, &d, ref);
@@ -253,7 +253,7 @@ JSValue js_compInfo(JSContext* c, JSValueConst, int argc, JSValueConst* argv) {
     std::string k = ks ? ks : "";
     JS_FreeCString(c, ks);
     const json& comp = *g_cur.ctx->comp;
-    if (k == "numLayers") return JS_NewInt32(c, (int)comp.value("layers", json::array()).size());
+    if (k == "numLayers") return JS_NewInt32(c, (int)jarr(comp, "layers").size());
     return JS_NewFloat64(c, comp.value(k, 0.0));
 }
 
@@ -261,7 +261,7 @@ JSValue js_markers(JSContext* c, JSValueConst, int, JSValueConst*) {
     JSValue a = JS_NewArray(c);
     if (!g_cur.ctx || !g_cur.ctx->comp) return a;
     uint32_t i = 0;
-    for (auto& m : g_cur.ctx->comp->value("markers", json::array())) {
+    for (auto& m : jarr(*g_cur.ctx->comp, "markers")) {
         JSValue o = JS_NewObject(c);
         JS_SetPropertyStr(c, o, "time", JS_NewFloat64(c, m.value("t", 0.0)));
         JS_SetPropertyStr(c, o, "comment", JS_NewString(c, m.value("title", "").c_str()));
