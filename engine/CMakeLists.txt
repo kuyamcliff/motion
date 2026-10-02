@@ -1,0 +1,71 @@
+cmake_minimum_required(VERSION 3.18)
+project(motionforge_engine C CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+option(MF_WITH_WHISPER "Build offline captions with whisper.cpp" ON)
+option(MF_BUILD_TESTS "Build host unit tests and CLI" ON)
+
+set(MF_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/..)
+set(TP ${MF_ROOT}/third_party)
+
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
+# ---------------------------------------------------------------- third party
+add_library(mf_quickjs STATIC
+  ${TP}/quickjs/quickjs.c ${TP}/quickjs/libregexp.c ${TP}/quickjs/libunicode.c ${TP}/quickjs/dtoa.c)
+target_include_directories(mf_quickjs PUBLIC ${TP}/quickjs)
+target_compile_definitions(mf_quickjs PRIVATE _GNU_SOURCE)
+if(NOT MSVC)
+  target_compile_options(mf_quickjs PRIVATE -w -funsigned-char)
+endif()
+
+add_library(mf_miniz STATIC ${TP}/miniz/miniz.c ${TP}/miniz/miniz_tdef.c ${TP}/miniz/miniz_tinfl.c ${TP}/miniz/miniz_zip.c)
+target_include_directories(mf_miniz PUBLIC ${TP}/miniz)
+target_compile_options(mf_miniz PRIVATE -w)
+
+add_library(mf_monocypher STATIC ${TP}/monocypher/monocypher.c ${TP}/monocypher/monocypher-ed25519.c)
+target_include_directories(mf_monocypher PUBLIC ${TP}/monocypher)
+
+if(MF_WITH_WHISPER)
+  set(WHISPER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+  set(WHISPER_BUILD_SERVER OFF CACHE BOOL "" FORCE)
+  set(WHISPER_CURL OFF CACHE BOOL "" FORCE)
+  set(WHISPER_SDL2 OFF CACHE BOOL "" FORCE)
+  set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+  set(GGML_NATIVE OFF CACHE BOOL "" FORCE)
+  set(GGML_OPENMP OFF CACHE BOOL "" FORCE)
+  set(GGML_BACKEND_DL OFF CACHE BOOL "" FORCE)
+  set(GGML_CCACHE OFF CACHE BOOL "" FORCE)
+  add_subdirectory(${TP}/whisper.cpp ${CMAKE_BINARY_DIR}/whisper EXCLUDE_FROM_ALL)
+endif()
+
+# ---------------------------------------------------------------- engine
+file(GLOB MF_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
+add_library(mfengine STATIC ${MF_SOURCES})
+target_include_directories(mfengine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${TP})
+target_link_libraries(mfengine PUBLIC mf_quickjs mf_miniz mf_monocypher)
+if(MF_WITH_WHISPER)
+  target_compile_definitions(mfengine PUBLIC MF_WITH_WHISPER=1)
+  target_link_libraries(mfengine PUBLIC whisper)
+endif()
+find_package(Threads REQUIRED)
+target_link_libraries(mfengine PUBLIC Threads::Threads)
+if(NOT MSVC)
+  target_compile_options(mfengine PRIVATE -Wall -Wno-sign-compare -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function)
+endif()
+
+if(MF_BUILD_TESTS)
+  file(GLOB MF_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp)
+  add_executable(mftests ${MF_TEST_SOURCES})
+  target_link_libraries(mftests PRIVATE mfengine)
+  target_compile_definitions(mftests PRIVATE MF_SOURCE_ROOT="${MF_ROOT}")
+  add_executable(mfcli ${CMAKE_CURRENT_SOURCE_DIR}/host/mfcli.cpp)
+  target_link_libraries(mfcli PRIVATE mfengine)
+  target_compile_definitions(mfcli PRIVATE MF_SOURCE_ROOT="${MF_ROOT}")
+endif()
