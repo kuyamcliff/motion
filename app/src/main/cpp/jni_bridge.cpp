@@ -32,6 +32,13 @@ std::unique_ptr<mfa::AndroidMediaProvider> g_media;
 std::unique_ptr<Engine> g_engine;
 std::mutex g_initMutex;
 EngineConfig g_cfg;
+// Frozen document used while an export runs so later edits never change a running export.
+std::shared_ptr<const json> g_exportDoc;
+std::mutex g_exportMutex;
+std::shared_ptr<const json> exportDoc() {
+    std::lock_guard<std::mutex> lk(g_exportMutex);
+    return g_exportDoc;
+}
 
 std::string jstr(JNIEnv* e, jstring s) {
     if (!s) return {};
@@ -382,6 +389,20 @@ json call(const std::string& m, const json& a) {
         }
         return okj({{"values", out}});
     }
+    if (m == "compToLayer") {
+        auto snap = E.snapshot();
+        const json* comp = activeComp(*snap);
+        const json* L = comp ? findLayer(*comp, a.value("layer", "")) : nullptr;
+        if (!L) return err("Layer not found.");
+        Mat4 w = E.renderer().layerWorldMatrix(*comp, *L, a.value("t", 0.0)), inv;
+        if (!w.inverse(inv)) return err("Layer transform is not invertible (zero scale?).");
+        json pts = json::array();
+        for (auto& p : jarr(a, "points")) {
+            Vec3 q = inv.transformPoint({p[0].get<double>(), p[1].get<double>(), 0});
+            pts.push_back({q.x, q.y});
+        }
+        return okj({{"points", pts}});
+    }
     if (m == "registries") return okj(registries());
     if (m == "diagnostics") return okj({{"items", E.diagnostics()}});
     if (m == "capabilities") return okj({{"caps", E.capabilities()}});
@@ -614,6 +635,16 @@ json call(const std::string& m, const json& a) {
         ScenarioResult r = runScenario(E, a.value("script", std::string()), a.value("workDir", g_cfg.cacheDir + "/scenario"));
         return {{"ok", r.ok}, {"error", r.error}, {"log", r.log}, {"outputs", r.outputs}};
     }
+    if (m == "exportBegin") {
+        std::lock_guard<std::mutex> lk(g_exportMutex);
+        g_exportDoc = E.snapshot();
+        return okj();
+    }
+    if (m == "exportEnd") {
+        std::lock_guard<std::mutex> lk(g_exportMutex);
+        g_exportDoc.reset();
+        return okj();
+    }
     if (m == "setLogLevel") { setLogLevel((LogLevel)a.value("level", 1)); return okj(); }
     return err("Unknown native method '" + m + "'.");
 }
@@ -705,13 +736,15 @@ JNIEXPORT jboolean JNICALL Java_com_motionforge_app_engine_NativeBridge_nativeRe
     uint8_t* dst = (uint8_t*)e->GetDirectBufferAddress(buffer);
     jlong cap = e->GetDirectBufferCapacity(buffer);
     if (!dst || cap < (jlong)w * h * 4) return false;
-    auto snap = g_engine->snapshot();
+    auto frozen = exportDoc();
+    auto snap = frozen ? frozen : g_engine->snapshot();
     const json* comp = activeComp(*snap);
     if (!comp) return false;
     double scale = (double)w / std::max(1, comp->value("width", 1920));
     RenderSettings rs;
     rs.exportMode = true;
-    Image img = g_engine->render(t, scale, rs);
+    rs.scale = scale;
+    Image img = g_engine->renderer().renderFrame(*snap, comp->value("id", ""), t, rs);
     if (img.w != w || img.h != h) img = resizeImage(img, w, h);
     std::memcpy(dst, img.px.data(), (size_t)w * h * 4);
     return true;
@@ -721,7 +754,14 @@ JNIEXPORT jfloat JNICALL Java_com_motionforge_app_engine_NativeBridge_nativeMixA
                                                                                      jint sampleRate) {
     if (!g_engine) return 0;
     std::vector<float> buf((size_t)frames * 2);
-    float peak = g_engine->mixAudio(t0, frames, buf.data(), sampleRate);
+    float peak;
+    if (auto frozen = exportDoc()) {
+        const json* comp = activeComp(*frozen);
+        g_engine->renderer().audio().setProject(frozen.get());
+        peak = comp ? g_engine->renderer().audio().mix(*frozen, *comp, t0, frames, buf.data(), sampleRate) : 0.f;
+    } else {
+        peak = g_engine->mixAudio(t0, frames, buf.data(), sampleRate);
+    }
     e->SetFloatArrayRegion(out, 0, frames * 2, buf.data());
     return peak;
 }
