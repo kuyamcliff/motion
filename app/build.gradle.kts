@@ -79,7 +79,17 @@ android {
             // Signed with the local debug key so the APK installs for testing; use your own key for distribution.
             signingConfig = signingConfigs.getByName("debug")
         }
+        // Device-test target: like debug but NOT debuggable, so ART can AOT-compile it (speed profile).
+        // Debuggable apps are capped at "quicken" and run Compose through the JIT, which on a software-emulated
+        // CPU stalls the UI thread long enough to trigger input-dispatch ANRs in UI tests.
+        create("uitest") {
+            initWith(getByName("debug"))
+            isDebuggable = false
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("debug")
+        }
     }
+    testBuildType = "uitest"
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

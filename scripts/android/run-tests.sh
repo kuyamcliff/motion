@@ -9,17 +9,25 @@ BUILD=1; [ "${1:-}" = "--no-build" ] && { BUILD=0; shift; }
 FILTER="${1:-}"
 OUT="${MF_TEST_OUT:-build/device-tests}"; mkdir -p "$OUT"
 if [ $BUILD = 1 ]; then
-  ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest -Pmf.abis=x86_64 --console=plain -q || exit 1
+  ./gradlew :app:assembleUitest :app:assembleUitestAndroidTest -Pmf.abis=x86_64 --console=plain -q || exit 1
   ./gradlew --stop >/dev/null 2>&1   # free memory for the emulator
 fi
 scripts/android/wait-stable.sh || true
 install() { for i in 1 2 3 4 5; do adb install -r -t "$1" && return 0; sleep 20; done; return 1; }
-install app/build/outputs/apk/debug/app-debug.apk || exit 1
-install app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk || exit 1
+install app/build/outputs/apk/uitest/app-uitest.apk || exit 1
+install app/build/outputs/apk/androidTest/uitest/app-uitest-androidTest.apk || exit 1
 # AOT-compile both APKs: removes runtime class verification/JIT, which on a software-emulated CPU can block
 # the UI thread long enough for input-dispatch ANRs (keyDispatchingTimedOut) on first use of Compose screens.
-adb shell cmd package compile -m speed -f com.motionforge.mobile >/dev/null 2>&1 || true
-adb shell cmd package compile -m speed -f com.motionforge.mobile.test >/dev/null 2>&1 || true
+aot() {  # retry until dexopt reports the speed profile (the package service is often busy right after install)
+  for i in 1 2 3 4 5; do
+    adb shell cmd package compile -m speed -f "$1" >/dev/null 2>&1
+    adb shell dumpsys package dexopt 2>/dev/null | grep -A3 "\[$1\]" | grep -q "status=speed" && return 0
+    sleep 15
+  done
+  echo "warning: $1 not AOT-compiled"
+}
+aot com.motionforge.mobile
+aot com.motionforge.mobile.test
 stamp=$(date +%Y%m%d-%H%M%S)
 adb logcat -c || true
 run_one() {  # $1 = -e key, $2 = value (optional)
@@ -40,6 +48,6 @@ else
   echo "SUMMARY: $passed/$total classes fully passed" | tee -a "$OUT/instrument-$stamp.txt"
 fi
 adb logcat -d > "$OUT/logcat-$stamp.txt" 2>/dev/null || true
-mkdir -p "$OUT/failures-$stamp" && adb exec-out run-as com.motionforge.mobile tar c files/test-failures 2>/dev/null | tar x -C "$OUT/failures-$stamp" 2>/dev/null; adb shell run-as com.motionforge.mobile rm -rf files/test-failures >/dev/null 2>&1
+mkdir -p "$OUT/failures-$stamp" && adb pull /sdcard/Download/mf-test-failures "$OUT/failures-$stamp/" >/dev/null 2>&1; adb shell rm -rf /sdcard/Download/mf-test-failures >/dev/null 2>&1; adb exec-out run-as com.motionforge.mobile tar c files/test-failures 2>/dev/null | tar x -C "$OUT/failures-$stamp" 2>/dev/null; adb shell run-as com.motionforge.mobile rm -rf files/test-failures >/dev/null 2>&1
 adb shell screencap -p /sdcard/last.png && adb pull /sdcard/last.png "$OUT/screen-$stamp.png" >/dev/null 2>&1 || true
 ! grep -qE "^FAILURES|shortMsg|Process crashed" "$OUT/instrument-$stamp.txt"

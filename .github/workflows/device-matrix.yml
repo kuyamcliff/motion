@@ -29,7 +29,7 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
       - name: Build APKs
-        run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest -Pmf.abis=x86_64
+        run: ./gradlew :app:assembleUitest :app:assembleUitestAndroidTest -Pmf.abis=x86_64
       - name: Instrumented suite (${{ matrix.name }})
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -63,7 +63,7 @@ jobs:
         if: env.HAS_KEY == 'true'
         with: { distribution: temurin, java-version: 17 }
       - if: env.HAS_KEY == 'true'
-        run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest -Pmf.abis=arm64-v8a
+        run: ./gradlew :app:assembleUitest :app:assembleUitestAndroidTest -Pmf.abis=arm64-v8a
       - uses: google-github-actions/auth@v2
         if: env.HAS_KEY == 'true'
         with: { credentials_json: "${{ secrets.GCP_SA_KEY }}" }
@@ -72,7 +72,7 @@ jobs:
       - if: env.HAS_KEY == 'true'
         run: |
           gcloud firebase test android run --type instrumentation \
-            --app app/build/outputs/apk/debug/app-debug.apk \
-            --test app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk \
+            --app app/build/outputs/apk/uitest/app-uitest.apk \
+            --test app/build/outputs/apk/androidTest/uitest/app-uitest-androidTest.apk \
             --device model=a10,version=29 --device model=redfin,version=30 --device model=oriole,version=33 \
             --device model=gts7lwifi,version=31,orientation=landscape --timeout 45m

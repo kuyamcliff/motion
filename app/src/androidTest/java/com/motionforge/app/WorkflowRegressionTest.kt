@@ -150,10 +150,8 @@ class WorkflowRegressionTest {
             val f3 = frame(3.0)
             mmr.release()
             // Keep the inspected frames as artifacts (pulled by run-tests.sh) for diagnosis.
-            File(ctx.filesDir, "test-failures").apply { mkdirs() }.let { d ->
-                File(d, "workflow-f1.png").outputStream().use { f1.compress(Bitmap.CompressFormat.PNG, 100, it) }
-                File(d, "workflow-f3.png").outputStream().use { f3.compress(Bitmap.CompressFormat.PNG, 100, it) }
-            }
+            TestArtifacts.savePng("workflow-f1.png", f1)
+            TestArtifacts.savePng("workflow-f3.png", f3)
             // First clip: blue footage inside the ellipse mask, black outside it (corner).
             val inside = f1.getPixel(320, 120)  // inside the default video mask (ellipse ~192x108 radii), clear of the square
             assertTrue("inside mask should be blue: ${Integer.toHexString(inside)}", inside.b() > 150 && inside.r() < 90 && inside.g() < 90)

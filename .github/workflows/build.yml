@@ -42,7 +42,7 @@ jobs:
       - name: Install NDK + CMake
         run: sdkmanager "ndk;27.2.12479018" "cmake;3.22.1"
       - name: Build debug and release APKs
-        run: ./gradlew :app:assembleDebug :app:assembleRelease :app:assembleDebugAndroidTest
+        run: ./gradlew :app:assembleDebug :app:assembleRelease :app:assembleUitestAndroidTest :app:assembleUitest
       - uses: actions/upload-artifact@v4
         with:
           name: apks
@@ -66,4 +66,4 @@ jobs:
         with:
           api-level: 30
           arch: x86_64
-          script: ./gradlew :app:connectedDebugAndroidTest -Pmf.abis=x86_64
+          script: ./gradlew :app:connectedUitestAndroidTest -Pmf.abis=x86_64

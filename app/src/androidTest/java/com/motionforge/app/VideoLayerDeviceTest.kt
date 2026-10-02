@@ -98,8 +98,7 @@ class VideoLayerDeviceTest {
                 val p = f.getPixel(500 * f.width / 640, 180 * f.height / 360)
                 if (!isBlue(p)) {
                     bad.add("#$i t=$t ${Integer.toHexString(p)}")
-                    val dir = File(ctx.filesDir, "test-failures").apply { mkdirs() }
-                    File(dir, "seek-$i.png").outputStream().use { f.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                    TestArtifacts.savePng("seek-$i.png", f)
                 }
             }
             assertTrue("bad frames: $bad", bad.isEmpty())
