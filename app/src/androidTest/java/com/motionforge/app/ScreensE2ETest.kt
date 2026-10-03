@@ -63,7 +63,9 @@ class ScreensE2ETest {
         try { compose.onAllNodes(m).fetchSemanticsNodes().isNotEmpty() } catch (e: IllegalStateException) { false }
 
     private fun waitFor(m: androidx.compose.ui.test.SemanticsMatcher) = compose.waitUntil(timeout) { nodesExist(m) }
-    private fun waitText(t: String) = waitFor(hasText(t))
+    /** Visible text or an icon's label (the UI is icon-first: most controls carry their name as content description). */
+    private fun named(t: String) = hasText(t) or hasContentDescription(t)
+    private fun waitText(t: String) = waitFor(named(t))
     private fun waitDesc(d: String) = waitFor(hasContentDescription(d, substring = true))
     private fun poll(what: String, ms: Long = timeout, detail: () -> String = { "" }, cond: () -> Boolean) {
         try { compose.waitUntil(ms) { try { cond() } catch (e: Exception) { false } } }
@@ -76,7 +78,7 @@ class ScreensE2ETest {
     }
 
     /** Taps the first node with exactly this text (scrolling it into view first). */
-    private fun tap(text: String) { waitText(text); compose.onAllNodesWithText(text).onFirst().scrollClick() }
+    private fun tap(text: String) { waitText(text); compose.onAllNodes(named(text)).onFirst().scrollClick() }
     private fun tapDesc(desc: String) {
         waitDesc(desc)
         compose.onAllNodes(hasContentDescription(desc, substring = true)).onFirst().scrollClick()

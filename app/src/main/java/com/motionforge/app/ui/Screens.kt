@@ -1,5 +1,17 @@
 package com.motionforge.app.ui
 
+import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.material.icons.filled.RecordVoiceOver
+import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.FindReplace
+import androidx.compose.material.icons.filled.CallMerge
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.statusBarsPadding
 import android.content.Intent
@@ -243,11 +255,11 @@ fun CaptionStudioScreen(app: AppState) {
         if (!assetsReady) SmallLabel("Preparing the offline speech model (first launch)…")
         else if (model.isEmpty()) {
             Text("No speech model installed.", color = Color(0xFFFF7A7A))
-            Chip("Open AI Models") { app.go(Screen.Models) }
+            IconAction(Icons.Filled.Psychology, "Open AI Models") { app.go(Screen.Models) }
         } else SmallLabel("Model: ${File(model).name}")
         if (media.isEmpty()) {
             SmallLabel("Add a video or audio clip with speech first.")
-            Chip("Add bundled speech sample") {
+            IconAction(Icons.Filled.RecordVoiceOver, "Add bundled speech sample") {
                 val f = File(ctx.filesDir, "samples/speech.wav")
                 if (!f.isFile) app.toast("Sample not found.", true) else { importIntoProject(app, ctx, Uri.fromFile(f)); source = st.selectedLayer?.optString("id") ?: "" }
             }
@@ -300,24 +312,24 @@ fun CaptionStudioScreen(app: AppState) {
             EnumPicker("Animation", style.optString("animationIn", "fade"), listOf("none", "fade", "pop", "slide", "typewriter").map { it to it.replaceFirstChar { c -> c.uppercase() } }) {
                 st.op("setCaptionStyle", "style" to jo("animationIn" to it, "animationOut" to if (it == "typewriter" || it == "pop") "fade" else it))
             }
-            Chip("Save style as preset") { st.op("setCaptionStyle", "style" to JSONObject(), "saveAsPreset" to true, "presetName" to "Custom ${st.doc.arr("captionStyles").length() + 1}") }
+            IconAction(Icons.Filled.BookmarkAdd, "Save style as preset") { st.op("setCaptionStyle", "style" to JSONObject(), "saveAsPreset" to true, "presetName" to "Custom ${st.doc.arr("captionStyles").length() + 1}") }
 
             SectionTitle("Find & replace")
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(find, { find = it }, label = { Text("Find") }, singleLine = true, modifier = Modifier.weight(1f))
                 OutlinedTextField(repl, { repl = it }, label = { Text("Replace") }, singleLine = true, modifier = Modifier.weight(1f))
             }
-            Chip("Replace all") { st.op("captionReplace", "find" to find, "replace" to repl)?.let { app.toast("Replaced ${it.optInt("count")} occurrences.") } }
+            IconAction(Icons.Filled.FindReplace, "Replace all") { st.op("captionReplace", "find" to find, "replace" to repl)?.let { app.toast("Replaced ${it.optInt("count")} occurrences.") } }
 
             SectionTitle("Captions (${items.size})", "Tap a caption to jump there; long-edit to change text or timing. Select captions and choose 'Remove from edit' to cut those sections out of the video (edit by transcript).")
             val issues = remember(st.revision) { NativeBridge.call("readingSpeed").arr("issues").objects().associateBy { it.optInt("index") } }
             FlowRow {
-                Chip("Export SRT") { saveSub.launch("captions.srt") }
-                Chip("Export VTT") { saveSub.launch("captions.vtt") }
-                Chip("Export ASS") { saveSub.launch("captions.ass") }
-                if (selected.size == 2) Chip("Merge") { val l = selected.toList().sortedBy { s -> items.indexOfFirst { it.optString("id") == s } }; st.op("mergeCaptions", "first" to l[0], "second" to l[1]); selected = emptySet() }
+                IconAction(Icons.Filled.Subtitles, "Export SRT") { saveSub.launch("captions.srt") }
+                IconAction(Icons.Filled.Subtitles, "Export VTT") { saveSub.launch("captions.vtt") }
+                IconAction(Icons.Filled.Subtitles, "Export ASS") { saveSub.launch("captions.ass") }
+                if (selected.size == 2) IconAction(Icons.Filled.CallMerge, "Merge") { val l = selected.toList().sortedBy { s -> items.indexOfFirst { it.optString("id") == s } }; st.op("mergeCaptions", "first" to l[0], "second" to l[1]); selected = emptySet() }
                 if (selected.isNotEmpty()) Chip("Remove from edit (${selected.size})") { st.op("editByCaption", "captions" to selected.toList()); selected = emptySet() }
-                if (selected.isNotEmpty()) Chip("Delete captions") { st.apply(jo("op" to "batch", "label" to "Delete Captions", "ops" to selected.map { jo("op" to "removeCaption", "caption" to it) })); selected = emptySet() }
+                if (selected.isNotEmpty()) IconAction(Icons.Filled.Delete, "Delete captions") { st.apply(jo("op" to "batch", "label" to "Delete Captions", "ops" to selected.map { jo("op" to "removeCaption", "caption" to it) })); selected = emptySet() }
             }
             items.forEachIndexed { i, c ->
                 val cid = c.optString("id")
@@ -793,20 +805,20 @@ fun SettingsScreen(app: AppState) {
             EnumPicker("Preview quality", Settings.previewQuality, listOf("auto" to "Adaptive", "full" to "Full", "half" to "Half", "quarter" to "Quarter")) {
                 Settings.previewQuality = it; app.player?.mode = it; app.player?.requestRender(); tick++
             }
-            Chip("Clear render caches") { NativeBridge.call("clearCaches"); app.toast("Caches cleared.") }
-            Chip("Performance monitor") { app.go(Screen.Performance) }
+            IconAction(Icons.Filled.CleaningServices, "Clear render caches") { NativeBridge.call("clearCaches"); app.toast("Caches cleared.") }
+            IconAction(Icons.Filled.Speed, "Performance monitor") { app.go(Screen.Performance) }
             SectionTitle("Accessibility")
             NumberRow("Interface scale", Settings.uiScale.toDouble(), 0.8, 1.6, onPreview = {}) { Settings.uiScale = it.toFloat(); tick++ }
             LabeledSwitch("Reduced motion", Settings.reducedMotion) { Settings.reducedMotion = it; tick++ }
             LabeledSwitch("High contrast", Settings.highContrast) { Settings.highContrast = it; tick++ }
             SectionTitle("Speech recognition")
-            Chip("AI Models (Whisper)") { app.go(Screen.Models) }
+            IconAction(Icons.Filled.Psychology, "AI Models (Whisper)") { app.go(Screen.Models) }
             SectionTitle("Developer")
             LabeledSwitch("Developer mode (allow unsigned extensions)", Settings.developerMode) { Settings.developerMode = it; tick++ }
             if (Settings.signingPublic.isNotEmpty()) Text("My publisher key: ${Settings.signingPublic.take(24)}…", fontSize = 12.sp, fontFamily = FontFamily.Monospace)
             FlowRow {
                 Chip(if (Settings.signingPublic.isEmpty()) "Create publisher key" else "Replace publisher key") { keyDialog = true }
-                Chip("Trust a publisher key") { trustKey = true }
+                IconAction(Icons.Filled.VerifiedUser, "Trust a publisher key") { trustKey = true }
             }
             Settings.trustedKeys.forEach { k ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -814,7 +826,7 @@ fun SettingsScreen(app: AppState) {
                     TextButton(onClick = { Settings.trustedKeys = Settings.trustedKeys - k; tick++ }) { Text("Revoke") }
                 }
             }
-            Chip("Developer Center") { app.go(Screen.DevCenter) }
+            IconAction(Icons.Filled.Code, "Developer Center") { app.go(Screen.DevCenter) }
             SectionTitle("About")
             val caps = remember { NativeBridge.call("capabilities").obj("caps") }
             SmallLabel("MOTIONFORGE Mobile • engine ${caps.optString("engine")} • project format v${caps.optInt("formatVersion")} • ${caps.optString("renderer").uppercase()} renderer, ${caps.optInt("threads")} threads • ${caps.optInt("effects")} effects • offline speech: ${if (caps.optBoolean("asr")) "Whisper" else "unavailable"}")
@@ -932,8 +944,8 @@ fun ProjectInspectorScreen(app: AppState) {
         SectionTitle("Storage")
         SmallLabel("Project folder (document, journal, versions, thumbnails): ${footprint.optLong("bytes") / 1024} KB")
         Row {
-            Chip("Save version now") { st.save(version = true); refresh++; app.toast("Version saved.") }
-            Chip("Clear caches") { NativeBridge.call("clearCaches"); refresh++ }
+            IconAction(Icons.Filled.Save, "Save version now") { st.save(version = true); refresh++; app.toast("Version saved.") }
+            IconAction(Icons.Filled.CleaningServices, "Clear caches") { NativeBridge.call("clearCaches"); refresh++ }
         }
         SectionTitle("Statistics")
         SmallLabel("${st.doc.arr("comps").length()} compositions • ${st.layers.size} layers in this comp • ${st.layers.sumOf { it.arr("effects").length() }} effects • ${st.keyframeTimes(null).size} keyframe times")
@@ -961,7 +973,7 @@ fun PerformanceScreen(app: AppState) {
         }
         Text(mem, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
         Text("CPU cores: ${Runtime.getRuntime().availableProcessors()}", fontSize = 12.sp, color = TextDim)
-        Chip("Free memory (clear caches)") { NativeBridge.call("memoryPressure"); System.gc() }
+        IconAction(Icons.Filled.Memory, "Free memory (clear caches)") { NativeBridge.call("memoryPressure"); System.gc() }
         SmallLabel("Tips: lower preview resolution for heavy effects; precompose complex groups (precomps are cached); disable motion blur while editing.")
     }
 }

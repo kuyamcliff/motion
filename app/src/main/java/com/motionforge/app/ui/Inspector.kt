@@ -1,5 +1,22 @@
 package com.motionforge.app.ui
 
+import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Bookmarks
+import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.VerticalAlignCenter
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.BrightnessMedium
+import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.Highlight
+import androidx.compose.material.icons.filled.ChangeHistory
+import androidx.compose.material.icons.filled.Dns
+import androidx.compose.material.icons.filled.DonutLarge
+import androidx.compose.material.icons.filled.Crop169
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.ViewInAr
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Videocam
@@ -146,8 +163,11 @@ fun AddLayerPanel(app: AppState, ui: EditorUi) {
     SectionTitle("3D")
     FlowRow {
         Tile(Icons.Filled.Videocam, "Camera", tint = Color(0xFF4FC3F7)) { add("camera", tab = InspectorTab.ThreeD) }
-        listOf("point", "spot", "directional", "ambient").forEach { k -> Tile(Icons.Filled.Lightbulb, "${k.replaceFirstChar { it.uppercase() }} light", tint = KeyColor) { add("light", jo("light" to k), InspectorTab.ThreeD) } }
-        st.registries.arr("primitives").strings().forEach { p -> Tile(Icons.Filled.ViewInAr, "3D $p", tint = Color(0xFF4FC3F7)) { add("model3d", jo("primitive" to p), InspectorTab.ThreeD) } }
+        val lightIcons = mapOf("point" to Icons.Filled.Lightbulb, "spot" to Icons.Filled.Highlight, "directional" to Icons.Filled.WbSunny, "ambient" to Icons.Filled.BrightnessMedium)
+        listOf("point", "spot", "directional", "ambient").forEach { k -> Tile(lightIcons[k]!!, "${k.replaceFirstChar { it.uppercase() }} light", tint = KeyColor) { add("light", jo("light" to k), InspectorTab.ThreeD) } }
+        val primIcons = mapOf("cube" to Icons.Filled.ViewInAr, "sphere" to Icons.Filled.Public, "plane" to Icons.Filled.Crop169, "torus" to Icons.Filled.DonutLarge,
+            "cylinder" to Icons.Filled.Dns, "cone" to Icons.Filled.ChangeHistory)
+        st.registries.arr("primitives").strings().forEach { p -> Tile(primIcons[p] ?: Icons.Filled.ViewInAr, "3D $p", tint = Color(0xFF4FC3F7)) { add("model3d", jo("primitive" to p), InspectorTab.ThreeD) } }
     }
     SectionTitle("Particles")
     FlowRow { st.registries.arr("particlePresets").strings().forEach { p -> Chip(p.replaceFirstChar { it.uppercase() }) { add("particles", jo("preset" to p), InspectorTab.Particles) } } }
@@ -217,10 +237,10 @@ fun LayerPanel(app: AppState, ui: EditorUi, layer: JSONObject) {
     }
     SectionTitle("Layer")
     FlowRow {
-        Chip("Create Capsule…") { capsule = true }
-        Chip("Precompose") { st.op("precompose", "layers" to st.selection.toList()) }
-        Chip("Save as preset") { val r = NativeBridge.call("savePreset", jo("layer" to id, "name" to layer.optString("name") + " preset", "include" to jo("effects" to true, "behaviors" to true, "masks" to true))); app.toast(if (r.optBoolean("ok")) "Preset saved to library" else r.optString("error"), !r.optBoolean("ok")) }
-        if (layer.has("precomp")) Chip("Edit internals") { st.op("setActiveComp", "comp" to layer.obj("precomp").optString("comp")); st.selection = emptySet() }
+        IconAction(Icons.Filled.Inventory2, "Create Capsule…") { capsule = true }
+        IconAction(Icons.Filled.Layers, "Precompose") { st.op("precompose", "layers" to st.selection.toList()) }
+        IconAction(Icons.Filled.BookmarkAdd, "Save as preset") { val r = NativeBridge.call("savePreset", jo("layer" to id, "name" to layer.optString("name") + " preset", "include" to jo("effects" to true, "behaviors" to true, "masks" to true))); app.toast(if (r.optBoolean("ok")) "Preset saved to library" else r.optString("error"), !r.optBoolean("ok")) }
+        if (layer.has("precomp")) IconAction(Icons.Filled.OpenInNew, "Edit internals") { st.op("setActiveComp", "comp" to layer.obj("precomp").optString("comp")); st.selection = emptySet() }
     }
     if (layer.has("precomp") && layer.obj("precomp").has("controlDefs")) CapsuleControls(st, layer)
     if (rename) TextInputDialog("Rename layer", layer.optString("name"), onDismiss = { rename = false }) { st.op("setLayer", "layer" to id, "fields" to jo("name" to it)) }
@@ -321,11 +341,11 @@ fun EffectsPanel(app: AppState, layer: JSONObject) {
     val expanded = remember { mutableStateOf(setOf<String>()) }
     val effects = layer.arr("effects").objects()
     FlowRow {
-        Chip("+ Add effect") { browse = true }
-        Chip("Apply preset") { presets = true }
-        if (effects.isNotEmpty()) Chip("Copy all") { Clipboard.effects = layer.arr("effects"); app.toast("Copied ${effects.size} effects") }
-        if (Clipboard.effects != null) Chip("Paste") { st.op("pasteEffects", "layer" to id, "effects" to Clipboard.effects) }
-        if (effects.isNotEmpty()) Chip("Bypass all") { st.apply(jo("op" to "batch", "label" to "Bypass Effects", "ops" to effects.map { jo("op" to "setEffect", "layer" to id, "effect" to it.optString("id"), "fields" to jo("enabled" to false)) })) }
+        IconAction(Icons.Filled.AddCircle, "+ Add effect") { browse = true }
+        IconAction(Icons.Filled.Bookmarks, "Apply preset") { presets = true }
+        if (effects.isNotEmpty()) IconAction(Icons.Filled.ContentCopy, "Copy all") { Clipboard.effects = layer.arr("effects"); app.toast("Copied ${effects.size} effects") }
+        if (Clipboard.effects != null) IconAction(Icons.Filled.ContentPaste, "Paste") { st.op("pasteEffects", "layer" to id, "effects" to Clipboard.effects) }
+        if (effects.isNotEmpty()) IconAction(Icons.Filled.VisibilityOff, "Bypass all") { st.apply(jo("op" to "batch", "label" to "Bypass Effects", "ops" to effects.map { jo("op" to "setEffect", "layer" to id, "effect" to it.optString("id"), "fields" to jo("enabled" to false)) })) }
     }
     if (effects.isEmpty()) SmallLabel("No effects. Effects are building blocks: stack several (e.g. Blur → Displacement → Glow → Color) to build your own look.")
     effects.forEachIndexed { i, e ->
@@ -415,8 +435,8 @@ fun MasksPanel(app: AppState, layer: JSONObject) {
     val st = app.editor
     val id = layer.optString("id")
     FlowRow {
-        Chip("+ Rectangle") { st.op("addMask", "layer" to id, "shape" to "rect") }
-        Chip("+ Ellipse") { st.op("addMask", "layer" to id, "shape" to "ellipse") }
+        IconAction(Icons.Filled.CropSquare, "+ Rectangle") { st.op("addMask", "layer" to id, "shape" to "rect") }
+        IconAction(Icons.Filled.Circle, "+ Ellipse") { st.op("addMask", "layer" to id, "shape" to "ellipse") }
         SmallLabel("Or use Mask / Pen mode on the preview to draw masks directly.")
     }
     layer.arr("masks").objects().forEach { m ->
@@ -434,7 +454,7 @@ fun MasksPanel(app: AppState, layer: JSONObject) {
             PropEditor(st, layer, "masks.$mid.expansion", "Expansion", "number", -200.0, 200.0)
             PropEditor(st, layer, "masks.$mid.opacity", "Opacity", "number", 0.0, 100.0)
             Row {
-                Chip("Keyframe path") { st.op("addKeyframe", "layer" to id, "path" to "masks.$mid.path", "t" to st.playhead) }
+                IconAction(Icons.Filled.Timeline, "Keyframe path") { st.op("addKeyframe", "layer" to id, "path" to "masks.$mid.path", "t" to st.playhead) }
             }
         }
     }
@@ -470,8 +490,8 @@ fun CompPanel(app: AppState) {
     }
     SectionTitle("Guides")
     FlowRow {
-        Chip("+ Vertical center guide") { st.op("addGuide", "axis" to "x", "pos" to c.optInt("width") / 2.0) }
-        Chip("+ Horizontal center guide") { st.op("addGuide", "axis" to "y", "pos" to c.optInt("height") / 2.0) }
+        IconAction(Icons.Filled.VerticalAlignCenter, "+ Vertical center guide") { st.op("addGuide", "axis" to "x", "pos" to c.optInt("width") / 2.0) }
+        IconAction(Icons.Filled.HorizontalRule, "+ Horizontal center guide") { st.op("addGuide", "axis" to "y", "pos" to c.optInt("height") / 2.0) }
         c.arr("guides").objects().forEach { g -> Chip("Remove ${g.optString("axis")}=${g.optInt("pos")}") { st.op("removeGuide", "guide" to g.optString("id")) } }
     }
     SectionTitle("Audio buses")

@@ -1,5 +1,12 @@
 package com.motionforge.app.ui
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.material.icons.filled.DriveFileMove
+import androidx.compose.material.icons.filled.CreateNewFolder
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.NoteAdd
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
@@ -195,15 +202,15 @@ fun MediaManagerScreen(app: AppState) {
     }
     ScreenScaffold(app, "Media") {
         FlowRow {
-            Chip("Import files") { importFiles.launch(arrayOf("video/*", "audio/*", "image/*")) }
-            Chip("Import folder") { importFolder.launch(null) }
-            Chip("Remove unused") { val n = MediaOps.removeUnused(st); app.toast(if (n == 0) "No unused media." else "Removed $n unused media items (undoable).") }
-            Chip("Collect into project") {
+            IconAction(Icons.Filled.NoteAdd, "Import files") { importFiles.launch(arrayOf("video/*", "audio/*", "image/*")) }
+            IconAction(Icons.Filled.CreateNewFolder, "Import folder") { importFolder.launch(null) }
+            IconAction(Icons.Filled.DeleteSweep, "Remove unused") { val n = MediaOps.removeUnused(st); app.toast(if (n == 0) "No unused media." else "Removed $n unused media items (undoable).") }
+            IconAction(Icons.Filled.DriveFileMove, "Collect into project") {
                 val (ok, bad) = MediaOps.collect(ctx, st)
                 app.toast("Copied $ok media files into the project" + if (bad > 0) "; $bad could not be read" else ".", bad > 0)
             }
-            Chip("Clear media caches") { val b = MediaOps.clearCaches(ctx); app.toast("Freed ${b / 1_000_000} MB of decoded caches.") }
-            Chip("Make proxies for all video") {
+            IconAction(Icons.Filled.CleaningServices, "Clear media caches") { val b = MediaOps.clearCaches(ctx); app.toast("Freed ${b / 1_000_000} MB of decoded caches.") }
+            IconAction(Icons.Filled.Speed, "Make proxies for all video") {
                 assets.filter { it.optString("type") == "video" && it.optJSONObject("proxy") == null }.forEach { startProxy(it.optString("id")) }
             }
         }

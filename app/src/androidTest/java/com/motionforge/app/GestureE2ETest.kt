@@ -66,8 +66,8 @@ class GestureE2ETest {
     private fun waitDesc(d: String) = compose.waitUntil(timeout) { exists(hasContentDescription(d, substring = true)) }
     private fun node(desc: String): SemanticsNodeInteraction { waitDesc(desc); return compose.onAllNodes(hasContentDescription(desc, substring = true)).onFirst() }
     private fun tap(text: String) {
-        compose.waitUntil(timeout) { exists(hasText(text)) }
-        compose.onAllNodesWithText(text).onFirst().apply { try { performScrollTo() } catch (_: Throwable) {} }.performClick()
+        compose.waitUntil(timeout) { exists(hasText(text) or hasContentDescription(text)) }
+        compose.onAllNodes(hasText(text) or hasContentDescription(text)).onFirst().apply { try { performScrollTo() } catch (_: Throwable) {} }.performClick()
     }
     private fun poll(what: String, ms: Long = timeout, detail: () -> String = { "" }, cond: () -> Boolean) {
         try { compose.waitUntil(ms) { try { cond() } catch (e: Exception) { false } } }

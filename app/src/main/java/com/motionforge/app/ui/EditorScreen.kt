@@ -207,7 +207,7 @@ fun EditorTopBar(app: AppState, ui: EditorUi) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val (icon, label) = when (st.saveStatus) { "saved" -> Icons.Filled.CloudDone to "Saved"; "error" -> Icons.Filled.ErrorOutline to "Save error"; else -> Icons.Filled.Edit to "Unsaved changes" }
                 Icon(icon, label, tint = if (st.saveStatus == "error") Color.Red else TextDim, modifier = Modifier.size(14.dp))
-                Text(if (compact) " " + when (st.saveStatus) { "saved" -> "Saved"; "error" -> "Save error"; else -> "Edited" } else " ${st.comp.optString("name")} · ${st.timecode(st.playhead)}",
+                if (!compact) Text(" ${st.comp.optString("name")} · ${st.timecode(st.playhead)}",
                     fontSize = 11.sp, color = TextDim, fontFamily = FontFamily.Monospace, maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)
             }
         }
@@ -224,11 +224,9 @@ fun EditorTopBar(app: AppState, ui: EditorUi) {
             IconBtn(Icons.Filled.Search, "Command palette") { app.paletteOpen = true }
             IconBtn(Icons.Filled.Tune, "Composition settings") { ui.tab = InspectorTab.Comp }
         }
-        Row(Modifier.padding(horizontal = 4.dp).sizeIn(minHeight = 36.dp).background(AccentGradient, RoundedCornerShape(18.dp))
-            .clickable { app.player?.pause(); app.go(Screen.Export) }.semantics(mergeDescendants = true) { contentDescription = "Export" }
-            .padding(horizontal = 12.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Filled.FileUpload, null, tint = Color.White, modifier = Modifier.size(16.dp))
-            if (!compact || roomy) Text(" Export", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Box(Modifier.padding(horizontal = 4.dp).size(42.dp).background(AccentGradient, androidx.compose.foundation.shape.CircleShape)
+            .clickable { app.player?.pause(); app.go(Screen.Export) }.semantics { contentDescription = "Export" }, contentAlignment = Alignment.Center) {
+            Icon(Icons.Filled.FileUpload, null, tint = Color.White, modifier = Modifier.size(22.dp))
         }
         Box {
             IconBtn(Icons.Filled.MoreVert, "More") { more = true }

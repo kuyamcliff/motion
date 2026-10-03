@@ -1,5 +1,14 @@
 package com.motionforge.app.ui
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CropFree
+import androidx.compose.material.icons.filled.FitScreen
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.GpsFixed
+import androidx.compose.material.icons.filled.Create
+import androidx.compose.material.icons.filled.Gesture
+import androidx.compose.material.icons.filled.Masks
+import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -320,14 +329,17 @@ fun PreviewPane(app: AppState, ui: EditorUi, modifier: Modifier) {
             penPts.forEachIndexed { i, p -> val v = toView(p); drawCircle(Color.Yellow, 7f, v); if (i > 0) drawLine(Color.Yellow, toView(penPts[i - 1]), v, 2f) }
         }
         // Mode bar & status.
-        Row(Modifier.align(Alignment.TopStart).horizontalScroll(rememberScrollState()).padding(2.dp)) {
-            listOf("select" to "Select", "mask" to "Mask", "draw" to "Draw", "pen" to "Pen", "track" to "Track").forEach { (k, n) -> Chip(n, ui.previewMode == k) { ui.previewMode = k; penPts.clear() } }
-            if (ui.previewMode == "pen" && penPts.size >= 3) {
-                Chip("Make shape") { createPenShape(app, penPts.toList(), asMask = false); penPts.clear() }
-                Chip("Make mask") { createPenShape(app, penPts.toList(), asMask = true); penPts.clear() }
+        Row(Modifier.align(Alignment.TopStart).horizontalScroll(rememberScrollState()).padding(4.dp)) {
+            listOf(Triple("select", "Select", Icons.Filled.NearMe), Triple("mask", "Mask", Icons.Filled.Masks), Triple("draw", "Draw", Icons.Filled.Gesture),
+                Triple("pen", "Pen", Icons.Filled.Create), Triple("track", "Track", Icons.Filled.GpsFixed)).forEach { (k, n, ic) ->
+                IconAction(ic, n, ui.previewMode == k) { ui.previewMode = k; penPts.clear() }
             }
-            if (zoom != 1f) Chip("Fit (${(zoom * 100).toInt()}%)") { zoom = 1f; pan = Offset.Zero }
-            Chip("100%") { zoom = st.compWidth.toFloat() / (viewSize.width.coerceAtLeast(1)); pan = Offset.Zero }
+            if (ui.previewMode == "pen" && penPts.size >= 3) {
+                IconAction(Icons.Filled.Category, "Make shape", tint = Color(0xFFFF9A4D)) { createPenShape(app, penPts.toList(), asMask = false); penPts.clear() }
+                IconAction(Icons.Filled.Masks, "Make mask", tint = KeyColor) { createPenShape(app, penPts.toList(), asMask = true); penPts.clear() }
+            }
+            if (zoom != 1f) IconAction(Icons.Filled.FitScreen, "Fit (${(zoom * 100).toInt()}%)") { zoom = 1f; pan = Offset.Zero }
+            IconAction(Icons.Filled.CropFree, "100%") { zoom = st.compWidth.toFloat() / (viewSize.width.coerceAtLeast(1)); pan = Offset.Zero }
         }
         if (ui.showDiagnostics) {
             val s = player.lastStats

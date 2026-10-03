@@ -1,5 +1,10 @@
 package com.motionforge.app.ui
 
+import androidx.compose.foundation.layout.height
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.SortByAlpha
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Home
@@ -138,16 +143,18 @@ fun HomeScreen(app: AppState) {
                 modifier = Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 13.dp).semantics { contentDescription = "Search projects" },
                 decorationBox = { inner -> Box { if (query.isEmpty()) Text("Search projects", color = TextDim, fontSize = 15.sp); inner() } })
         }
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            listOf("recent" to "Recent", "name" to "Name", "size" to "Size").forEach { (k, n) -> Chip(n, sort == k) { sort = k } }
-            Chip("Import Package") { openPkg.launch(arrayOf("*/*")) }
-            Chip("Sample Project") {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconAction(Icons.Filled.Schedule, "Sort: recent", sort == "recent") { sort = "recent" }
+            IconAction(Icons.Filled.SortByAlpha, "Sort: name", sort == "name") { sort = "name" }
+            IconAction(Icons.Filled.Storage, "Sort: size", sort == "size") { sort = "size" }
+            androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+            IconAction(Icons.Filled.FileOpen, "Import Package") { openPkg.launch(arrayOf("*/*")) }
+            IconAction(Icons.Filled.AutoAwesome, "Sample Project", tint = KeyColor) {
                 val id = createSampleProject(ctx)
                 if (id == null) app.toast("Could not create the sample project.", true) else { refresh++; app.openProject(id) }
             }
         }
-        Text(if (shown.isEmpty() && projects.isNotEmpty()) "No projects match \"$query\"." else "Projects", fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
-            color = if (shown.isEmpty() && projects.isNotEmpty()) TextDim else Color.White, modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 2.dp))
+        androidx.compose.foundation.layout.Spacer(Modifier.height(6.dp))
         LazyVerticalGrid(GridCells.Adaptive(156.dp), modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 12.dp)) {
             item(key = "__new") { NewProjectTile { showNew = true } }
@@ -158,8 +165,6 @@ fun HomeScreen(app: AppState) {
                 }, onLong = { menuFor = p })
             }
         }
-        if (projects.isEmpty()) Text("No projects yet. Tap New Project or try the sample — everything works offline.", color = TextDim, fontSize = 13.sp,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
         HomeBottomBar(app, onNew = { showNew = true })
     }
     if (showNew) NewProjectDialog(onDismiss = { showNew = false }) { name, w, h, fps, dur ->
@@ -220,13 +225,10 @@ fun NewProjectTile(onClick: () -> Unit) {
     Column(Modifier.padding(6.dp).clip(RoundedCornerShape(16.dp)).background(Accent.copy(alpha = 0.10f))
         .border(1.dp, Accent.copy(alpha = 0.6f), RoundedCornerShape(16.dp)).clickable(onClick = onClick)
         .semantics(mergeDescendants = true) { contentDescription = "New Project" }
-        .aspectRatio(0.92f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Box(Modifier.size(52.dp).background(AccentGradient, androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) {
-            androidx.compose.material3.Icon(Icons.Filled.Add, null, tint = Color.White, modifier = Modifier.size(28.dp))
+        .aspectRatio(16f / 13.2f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        Box(Modifier.size(64.dp).background(AccentGradient, androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) {
+            androidx.compose.material3.Icon(Icons.Filled.Add, null, tint = Color.White, modifier = Modifier.size(36.dp))
         }
-        Gap(10)
-        Text("New Project", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-        Text("Presets or custom size", fontSize = 11.sp, color = TextDim)
     }
 }
 

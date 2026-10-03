@@ -79,7 +79,7 @@ class UiE2ETest {
     }
 
     private fun waitText(t: String) = compose.waitUntil(timeout) {
-        try { compose.onAllNodesWithText(t, substring = true).fetchSemanticsNodes().isNotEmpty() } catch (e: IllegalStateException) { false }
+        try { compose.onAllNodes(hasText(t, substring = true) or hasContentDescription(t)).fetchSemanticsNodes().isNotEmpty() } catch (e: IllegalStateException) { false }
     }
 
     @Test
@@ -100,9 +100,9 @@ class UiE2ETest {
         waitDesc("Undo (nothing to undo)")
 
         // Add a text layer through the Add panel.
-        compose.onNodeWithText("+ Layer").performClick()
+        compose.onNode(hasContentDescription("+ Layer")).performClick()
         waitText("Rectangle")
-        compose.onAllNodesWithText("Text")[0].performClick()
+        compose.onAllNodes(hasText("Text") or hasContentDescription("Text"))[0].performClick()
         var appRef: AppState? = null
         scenario!!.onActivity { act -> appRef = act.app }
         val app = appRef!!

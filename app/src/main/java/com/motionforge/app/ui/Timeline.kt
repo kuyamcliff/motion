@@ -1,5 +1,12 @@
 package com.motionforge.app.ui
 
+import androidx.compose.material.icons.filled.LibraryAddCheck
+import androidx.compose.material.icons.filled.Straighten
+import androidx.compose.material.icons.filled.UnfoldMore
+import androidx.compose.material.icons.filled.UnfoldLess
+import androidx.compose.material.icons.filled.FitScreen
+import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material.icons.filled.ZoomOut
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -165,16 +172,13 @@ fun Timeline(app: AppState, ui: EditorUi, modifier: Modifier) {
                     } while (true)
                 }
             }) {
-            Chip("−") { ui.timelineZoom = (ui.timelineZoom / 1.5f).coerceAtLeast(8f) }
-            Chip("+") { ui.timelineZoom = (ui.timelineZoom * 1.5f).coerceAtMost(1200f) }
-            Chip("Fit") { ui.timelineZoom = (800f / st.duration.toFloat()).coerceIn(8f, 1200f); scrollX = 0f }
-            Chip(if (ui.expandedTracks) "Compact" else "Expand") { ui.expandedTracks = !ui.expandedTracks }
-            Chip(if (Settings.snapping) "Snap on" else "Snap off", Settings.snapping) { Settings.snapping = !Settings.snapping }
-            Chip(if (ui.multiSelect) "Multi-select on" else "Multi-select", ui.multiSelect) { ui.multiSelect = !ui.multiSelect }
-            // Single line, ellipsized: on a phone the chips fill the width and a wrapping hint would grow the strip
-            // vertically until it pushed the layer rows out of the timeline.
-            Text("  pinch here to zoom · drag to pan", color = TextDim, fontSize = 12.sp, maxLines = 1, softWrap = false,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            IconAction(Icons.Filled.ZoomOut, "Zoom out timeline") { ui.timelineZoom = (ui.timelineZoom / 1.5f).coerceAtLeast(8f) }
+            IconAction(Icons.Filled.ZoomIn, "Zoom in timeline") { ui.timelineZoom = (ui.timelineZoom * 1.5f).coerceAtMost(1200f) }
+            IconAction(Icons.Filled.FitScreen, "Fit timeline") { ui.timelineZoom = (800f / st.duration.toFloat()).coerceIn(8f, 1200f); scrollX = 0f }
+            IconAction(if (ui.expandedTracks) Icons.Filled.UnfoldLess else Icons.Filled.UnfoldMore, if (ui.expandedTracks) "Compact tracks" else "Expand tracks", ui.expandedTracks) { ui.expandedTracks = !ui.expandedTracks }
+            IconAction(Icons.Filled.Straighten, if (Settings.snapping) "Snap on" else "Snap off", Settings.snapping) { Settings.snapping = !Settings.snapping }
+            IconAction(Icons.Filled.LibraryAddCheck, if (ui.multiSelect) "Multi-select on" else "Multi-select", ui.multiSelect) { ui.multiSelect = !ui.multiSelect }
+            androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))  // free strip area: pinch here to zoom, drag to pan
         }
     }
 }

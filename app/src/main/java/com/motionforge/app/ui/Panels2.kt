@@ -1,5 +1,28 @@
 package com.motionforge.app.ui
 
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.LastPage
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Straighten
+import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.Diamond
+import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.ContentCut
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.ViewWeek
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.PauseCircle
+import androidx.compose.material.icons.filled.Compress
+import androidx.compose.material.icons.filled.ViewInAr
+import androidx.compose.material.icons.filled.LayersClear
+import androidx.compose.material.icons.filled.Rule
+import androidx.compose.material.icons.filled.FirstPage
+import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.Expand
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -118,7 +141,7 @@ fun TextPanel(app: AppState, layer: JSONObject) {
         st.registries.arr("textPresets").strings().forEach { p ->
             Chip(p.replace(Regex("([A-Z])"), " $1").let(::cap)) { st.op("textPreset", "layer" to id, "preset" to p, "t" to st.playhead, "duration" to 1.0) }
         }
-        Chip("+ Custom animator") { customAnim = true }
+        IconAction(Icons.Filled.AddCircle, "+ Custom animator") { customAnim = true }
     }
     td.arr("animators").objects().forEach { a ->
         val aid = a.optString("id")
@@ -285,7 +308,7 @@ fun ShapePanel(app: AppState, layer: JSONObject) {
     OpSection(st, id, sh, "extrude", "3D extrude") {
         PropEditor(st, layer, "shape.extrude.depth", "Depth", min = 0.0, max = 400.0)
         PropEditor(st, layer, "shape.extrude.sideColor", "Side color", "color")
-        if (!layer.optBoolean("threeD")) Chip("Make layer 3D") { st.op("setLayer", "layer" to id, "fields" to jo("threeD" to true)) }
+        if (!layer.optBoolean("threeD")) IconAction(Icons.Filled.ViewInAr, "Make layer 3D") { st.op("setLayer", "layer" to id, "fields" to jo("threeD" to true)) }
     }
 }
 
@@ -345,11 +368,11 @@ fun TimePanel(app: AppState, layer: JSONObject) {
     SectionTitle("Timing")
     Text("In ${st.timecode(layer.optDouble("in"))}  •  Out ${st.timecode(layer.optDouble("out"))}  •  Length ${"%.2f".format(layer.optDouble("out") - layer.optDouble("in"))}s", fontSize = 13.sp)
     FlowRow {
-        Chip("Split at playhead") { st.op("split", "layers" to listOf(id), "t" to st.playhead) }
-        Chip("Trim start to playhead") { st.op("trimLayer", "layer" to id, "edge" to "in", "t" to st.playhead) }
-        Chip("Trim end to playhead") { st.op("trimLayer", "layer" to id, "edge" to "out", "t" to st.playhead) }
-        Chip("Move start to playhead") { st.op("moveLayerTime", "layers" to listOf(id), "dt" to st.playhead - layer.optDouble("in")) }
-        Chip("Ripple delete") { st.op("rippleDelete", "layer" to id) }
+        IconAction(Icons.Filled.ContentCut, "Split at playhead") { st.op("split", "layers" to listOf(id), "t" to st.playhead) }
+        IconAction(Icons.Filled.FirstPage, "Trim start to playhead") { st.op("trimLayer", "layer" to id, "edge" to "in", "t" to st.playhead) }
+        IconAction(Icons.Filled.LastPage, "Trim end to playhead") { st.op("trimLayer", "layer" to id, "edge" to "out", "t" to st.playhead) }
+        IconAction(Icons.Filled.FirstPage, "Move start to playhead") { st.op("moveLayerTime", "layers" to listOf(id), "dt" to st.playhead - layer.optDouble("in")) }
+        IconAction(Icons.Filled.DeleteSweep, "Ripple delete") { st.op("rippleDelete", "layer" to id) }
     }
     SectionTitle("Speed")
     NumberRow("Speed %", speed * 100, 10.0, 400.0, help = "Changes clip duration. Keyframes are re-timed with the clip.", onPreview = {}) { st.op("setSpeed", "layer" to id, "speed" to it / 100.0) }
@@ -358,7 +381,7 @@ fun TimePanel(app: AppState, layer: JSONObject) {
     }
     LabeledSwitch("Reverse", layer.optBoolean("reverse")) { st.op("reverse", "layer" to id, "on" to it) }
     if (layer.optString("type") in setOf("video", "precomp")) {
-        Chip("Freeze frame (2 s) at playhead") { st.op("freezeFrame", "layer" to id, "t" to st.playhead, "duration" to 2.0) }
+        IconAction(Icons.Filled.PauseCircle, "Freeze frame (2 s) at playhead") { st.op("freezeFrame", "layer" to id, "t" to st.playhead, "duration" to 2.0) }
         SectionTitle("Speed ramps & time remap", "Time remapping maps layer time to source time with keyframes for smooth speed ramps.")
         FlowRow { st.registries.arr("speedRamps").strings().forEach { p -> Chip(cap(p), layer.obj("timeRemap").optString("preset") == p) { st.op("speedRampPreset", "layer" to id, "preset" to p) } } }
         val tr = layer.optJSONObject("timeRemap")
@@ -434,7 +457,7 @@ fun BehaviorsPanel(app: AppState, layer: JSONObject) {
             EnumPicker("React to audio", link?.optString("band") ?: "", listOf("" to "Off", "amplitude" to "Amplitude", "bass" to "Bass", "mid" to "Mid", "treble" to "Treble", "beat" to "Beat")) { band ->
                 st.op("setBehavior", "layer" to id, "behavior" to bid, "fields" to jo("audioLink" to if (band.isEmpty()) null else jo("band" to band, "amount" to 1.0)))
             }
-            Chip("Bake to keyframes") { st.op("bakeBehavior", "layer" to id, "behavior" to bid) }
+            IconAction(Icons.Filled.Diamond, "Bake to keyframes") { st.op("bakeBehavior", "layer" to id, "behavior" to bid) }
         }
     }
 }
@@ -487,21 +510,21 @@ fun KeyframesPanel(app: AppState, ui: EditorUi, layer: JSONObject) {
             st.op(if (atKey != null) "removeKeyframe" else "addKeyframe", "layer" to id, "path" to path, "t" to st.playhead)
         }
         if (keys.isNotEmpty()) {
-            Chip("◀ Prev key") { keys.map { it.optDouble("t") + start }.lastOrNull { it < st.playhead - 1e-6 }?.let { st.playhead = it } }
-            Chip("Next key ▶") { keys.map { it.optDouble("t") + start }.firstOrNull { it > st.playhead + 1e-6 }?.let { st.playhead = it } }
-            Chip("Copy keys") {
+            IconAction(Icons.Filled.SkipPrevious, "◀ Prev key") { keys.map { it.optDouble("t") + start }.lastOrNull { it < st.playhead - 1e-6 }?.let { st.playhead = it } }
+            IconAction(Icons.Filled.SkipNext, "Next key ▶") { keys.map { it.optDouble("t") + start }.firstOrNull { it > st.playhead + 1e-6 }?.let { st.playhead = it } }
+            IconAction(Icons.Filled.ContentCopy, "Copy keys") {
                 val r = NativeBridge.call("copyKeyframes", jo("layer" to id, "path" to path))
                 if (r.optBoolean("ok")) { Clipboard.keyframes = r.obj("clip"); Clipboard.keyframePath = path; app.toast("Copied ${r.obj("clip").arr("k").length()} keyframes") } else app.toast(r.optString("error"), true)
             }
-            Chip("Reverse") { st.op("reverseKeyframes", "layer" to id, "path" to path) }
-            Chip("Distribute evenly") { st.op("distributeKeyframes", "layer" to id, "path" to path) }
-            Chip("Stretch ×2") { st.op("scaleKeyframes", "layer" to id, "path" to path, "factor" to 2.0, "pivot" to (keys.first().optDouble("t") + start)) }
-            Chip("Squeeze ×½") { st.op("scaleKeyframes", "layer" to id, "path" to path, "factor" to 0.5, "pivot" to (keys.first().optDouble("t") + start)) }
-            Chip("Nudge +1f") { st.op("nudgeKeyframes", "layer" to id, "path" to path, "dt" to 1.0 / st.fps) }
-            Chip("Nudge −1f") { st.op("nudgeKeyframes", "layer" to id, "path" to path, "dt" to -1.0 / st.fps) }
-            Chip("Clear animation") { st.op("clearKeyframes", "layer" to id, "path" to path, "t" to st.playhead) }
+            IconAction(Icons.Filled.SwapHoriz, "Reverse") { st.op("reverseKeyframes", "layer" to id, "path" to path) }
+            IconAction(Icons.Filled.ViewWeek, "Distribute evenly") { st.op("distributeKeyframes", "layer" to id, "path" to path) }
+            IconAction(Icons.Filled.Expand, "Stretch ×2") { st.op("scaleKeyframes", "layer" to id, "path" to path, "factor" to 2.0, "pivot" to (keys.first().optDouble("t") + start)) }
+            IconAction(Icons.Filled.Compress, "Squeeze ×½") { st.op("scaleKeyframes", "layer" to id, "path" to path, "factor" to 0.5, "pivot" to (keys.first().optDouble("t") + start)) }
+            IconAction(Icons.Filled.KeyboardArrowRight, "Nudge +1f") { st.op("nudgeKeyframes", "layer" to id, "path" to path, "dt" to 1.0 / st.fps) }
+            IconAction(Icons.Filled.KeyboardArrowLeft, "Nudge −1f") { st.op("nudgeKeyframes", "layer" to id, "path" to path, "dt" to -1.0 / st.fps) }
+            IconAction(Icons.Filled.LayersClear, "Clear animation") { st.op("clearKeyframes", "layer" to id, "path" to path, "t" to st.playhead) }
         }
-        Clipboard.keyframes?.let { clip -> Chip("Paste at playhead") { st.op("pasteKeyframes", "layer" to id, "path" to path, "clip" to clip, "t" to st.playhead) } }
+        Clipboard.keyframes?.let { clip -> IconAction(Icons.Filled.ContentPaste, "Paste at playhead") { st.op("pasteKeyframes", "layer" to id, "path" to path, "clip" to clip, "t" to st.playhead) } }
     }
     if (keys.isNotEmpty()) {
         SectionTitle("Easing", "Applies to the keyframe at the playhead (the segment leaving it), or to all keyframes.")
@@ -634,15 +657,15 @@ fun ExpressionEditor(app: AppState, layer: JSONObject, path: String) {
         placeholder = { Text("e.g. wiggle(2, 30)") }, textStyle = androidx.compose.ui.text.TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontSize = 13.sp, color = Color.White), minLines = 2)
     if (status.isNotEmpty()) Text(status, color = if (status.startsWith("OK")) Color(0xFF66BB6A) else Color(0xFFFF7A7A), fontSize = 12.sp)
     FlowRow {
-        Chip("Check") {
+        IconAction(Icons.Filled.Rule, "Check") {
             val r = NativeBridge.call("validateExpression", jo("source" to text))
             status = if (r.optBoolean("ok")) "OK — expression compiles." else r.optString("error")
         }
-        Chip("Apply") { if (st.op("setExpression", "layer" to id, "path" to path, "expr" to text) != null) status = if (text.isBlank()) "Expression removed." else "OK — applied." }
+        IconAction(Icons.Filled.Check, "Apply") { if (st.op("setExpression", "layer" to id, "path" to path, "expr" to text) != null) status = if (text.isBlank()) "Expression removed." else "OK — applied." }
         if (prop?.has("x") == true) {
             val en = prop.optBoolean("xe", true)
             Chip(if (en) "Disable" else "Enable") { st.op("setExpression", "layer" to id, "path" to path, "expr" to prop.optString("x"), "enabled" to !en) }
-            Chip("Remove") { st.op("setExpression", "layer" to id, "path" to path, "expr" to "") }
+            IconAction(Icons.Filled.Delete, "Remove") { st.op("setExpression", "layer" to id, "path" to path, "expr" to "") }
         }
         listOf("wiggle(2, 30)", "loopOut()", "time * 90", "value + [0, Math.sin(time * 4) * 40]").forEach { ex -> Chip(ex) { text = ex } }
     }
@@ -716,7 +739,7 @@ fun ThreeDPanel(app: AppState, layer: JSONObject) {
     }
     if (st.layers.none { it.optString("type") == "camera" } && layer.optBoolean("threeD")) {
         Gap(); SmallLabel("No camera yet: the default 50 mm view is used.")
-        Chip("Add camera") { st.addLayer("camera") }
+        IconAction(Icons.Filled.Videocam, "Add camera") { st.addLayer("camera") }
     }
 }
 
@@ -809,7 +832,7 @@ fun TrackingPanel(app: AppState, ui: EditorUi, layer: JSONObject) {
         LinearProgressIndicator(progress = { it }, modifier = Modifier.fillMaxWidth())
         TextButton(onClick = { progress = null }) { Text("Cancel") }
     }
-    if (progress == null) Chip("Stabilize clip") {
+    if (progress == null) IconAction(Icons.Filled.Straighten, "Stabilize clip") {
         progress = 0f
         scope.launch {
             val r = withContext(Dispatchers.Default) {

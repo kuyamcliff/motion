@@ -1,5 +1,7 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 package com.motionforge.app.ui
 
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -101,18 +103,45 @@ fun Card(modifier: Modifier = Modifier, padding: androidx.compose.ui.unit.Dp = 1
     )
 }
 
-/** Square icon tile (insert panels, libraries). */
+/** Square icon tile (insert panels, libraries). Icon only; the name is the accessibility label and a long-press tooltip. */
 @Composable
 fun Tile(icon: ImageVector, label: String, tint: Color = Accent, onClick: () -> Unit) {
-    androidx.compose.foundation.layout.Column(
-        Modifier.padding(4.dp).size(width = 84.dp, height = 78.dp).clip(RoundedCornerShape(14.dp)).background(PanelHi)
-            .border(1.dp, Stroke, RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(6.dp)
+    var tip by remember { mutableStateOf(false) }
+    Box(
+        Modifier.padding(4.dp).size(60.dp).clip(RoundedCornerShape(16.dp)).background(PanelHi)
+            .border(1.dp, Stroke, RoundedCornerShape(16.dp))
+            .combinedClickable(onClick = onClick, onLongClick = { tip = true })
             .semantics(mergeDescendants = true) { contentDescription = label },
-        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+        contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, null, tint = tint, modifier = Modifier.size(26.dp))
-        Spacer(Modifier.height(6.dp))
-        Text(label, fontSize = 11.sp, color = Color.White, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+        Icon(icon, null, tint = tint, modifier = Modifier.size(28.dp))
+        if (tip) Tooltip(label) { tip = false }
+    }
+}
+
+/** Short label bubble shown above an icon after a long press; disappears by itself. */
+@Composable
+fun Tooltip(text: String, onGone: () -> Unit) {
+    androidx.compose.runtime.LaunchedEffect(text) { kotlinx.coroutines.delay(1400); onGone() }
+    androidx.compose.ui.window.Popup(alignment = Alignment.TopCenter, offset = androidx.compose.ui.unit.IntOffset(0, -110), onDismissRequest = onGone) {
+        Text(text, fontSize = 12.sp, color = Color.White, maxLines = 1,
+            modifier = Modifier.background(Color(0xF0222A44), RoundedCornerShape(8.dp)).border(1.dp, Stroke, RoundedCornerShape(8.dp)).padding(horizontal = 10.dp, vertical = 6.dp))
+    }
+}
+
+/** Compact icon toggle (preview modes, timeline tools): 44 dp, accent fill when selected, tooltip on long press. */
+@Composable
+fun IconAction(icon: ImageVector, label: String, selected: Boolean = false, tint: Color = Color.White, onClick: () -> Unit) {
+    var tip by remember { mutableStateOf(false) }
+    Box(
+        Modifier.padding(3.dp).size(44.dp).clip(RoundedCornerShape(12.dp))
+            .background(if (selected) Accent else PanelHi.copy(alpha = 0.85f))
+            .combinedClickable(onClick = onClick, onLongClick = { tip = true })
+            .semantics(mergeDescendants = true) { contentDescription = label; stateDescription = if (selected) "selected" else "not selected" },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, null, tint = if (selected) Color.White else tint, modifier = Modifier.size(22.dp))
+        if (tip) Tooltip(label) { tip = false }
     }
 }
 
@@ -131,16 +160,17 @@ fun PrimaryButton(text: String, modifier: Modifier = Modifier, icon: ImageVector
 /** Icon over a short label: bottom tool bars and navigation (min 56 dp wide, 48 dp tall). */
 @Composable
 fun ToolButton(icon: ImageVector, label: String, selected: Boolean = false, modifier: Modifier = Modifier, description: String = label, onClick: () -> Unit) {
-    androidx.compose.foundation.layout.Column(
-        modifier.sizeIn(minWidth = 60.dp, minHeight = 52.dp).clip(RoundedCornerShape(12.dp))
-            .background(if (selected) Accent.copy(alpha = 0.18f) else Color.Transparent)
-            .clickable(onClick = onClick).padding(horizontal = 6.dp, vertical = 5.dp)
+    // Icon only: the name is the accessibility label and appears as a tooltip on long press.
+    var tip by remember { mutableStateOf(false) }
+    Box(
+        modifier.size(width = 56.dp, height = 52.dp).padding(horizontal = 3.dp, vertical = 3.dp).clip(RoundedCornerShape(14.dp))
+            .background(if (selected) Accent.copy(alpha = 0.22f) else Color.Transparent)
+            .combinedClickable(onClick = onClick, onLongClick = { tip = true })
             .semantics(mergeDescendants = true) { contentDescription = description; stateDescription = if (selected) "selected" else "" },
-        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+        contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, null, tint = if (selected) Accent else Color.White, modifier = Modifier.size(22.dp))
-        Text(label, fontSize = 11.sp, color = if (selected) Accent else TextDim, maxLines = 1, softWrap = false,
-            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+        Icon(icon, null, tint = if (selected) Accent else Color.White, modifier = Modifier.size(25.dp))
+        if (tip) Tooltip(label) { tip = false }
     }
 }
 
