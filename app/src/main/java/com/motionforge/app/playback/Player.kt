@@ -38,6 +38,24 @@ class Player(private val state: EditorState) {
 
     var frame by mutableStateOf<Bitmap?>(null)
         private set
+
+    /** GPU preview (null when disabled in Settings or when EGL/shaders are unavailable: the CPU bitmap path is used). */
+    var gpu: GpuRenderer? = null
+        private set
+    private var gpuTried = false
+    /** True while the preview TextureView is bound to the GPU renderer. */
+    var gpuWindow by mutableStateOf(false)
+    var gpuFrames by mutableIntStateOf(0)
+        private set
+
+    fun gpuRenderer(): GpuRenderer? {
+        if (!com.motionforge.app.Settings.gpuPreview) return null
+        if (!gpuTried) {
+            gpuTried = true
+            gpu = try { GpuRenderer().takeIf { it.ready } } catch (e: Throwable) { null }
+        }
+        return gpu
+    }
     var playing by mutableStateOf(false)
         private set
     var loop by mutableStateOf(true)
@@ -82,11 +100,28 @@ class Player(private val state: EditorState) {
         pendingRender = true
         val t = state.playhead
         scope.launch {
-            val bmp = renderAt(t, draft = false)
-            frame = bmp
+            renderFrame(t, draft = false)
             pendingRender = false
             if (renderAgain) { renderAgain = false; requestRender() }
         }
+    }
+
+    /** Renders on the GPU when its window is bound, otherwise into the CPU bitmap shown by Compose. */
+    private suspend fun renderFrame(t: Double, draft: Boolean) {
+        val g = gpu
+        if (g != null && g.ready && g.hasWindow && gpuWindow) {
+            val (w, _) = targetSize()
+            val start = System.nanoTime()
+            val r = g.render(t, w, com.motionforge.app.Settings.useProxies)
+            if (r != null && r.optBoolean("ok")) {
+                renderMs = (System.nanoTime() - start) / 1e6f
+                lastStats = r
+                quality = when { w >= minOf(previewWidth, state.compWidth) -> "Full"; w * 2 >= minOf(previewWidth, state.compWidth) -> "Half"; else -> "Quarter" }
+                gpuFrames++
+                return
+            }
+        }
+        frame = renderAt(t, draft)
     }
 
     private suspend fun renderAt(t: Double, draft: Boolean): Bitmap? = withContext(renderDispatcher) {
@@ -148,8 +183,7 @@ class Player(private val state: EditorState) {
                 lastShown = fi
                 t = fi * frameDur
                 state.playhead = t
-                val bmp = renderAt(t, draft = true)
-                frame = bmp
+                renderFrame(t, draft = true)
                 frames++
                 // Adaptive preview quality: lower resolution if we miss real time, recover when there is headroom.
                 if (mode == "auto") {
@@ -264,6 +298,8 @@ class Player(private val state: EditorState) {
 
     fun release() {
         pause()
+        gpu?.release()
+        gpu = null
         scope.launch(renderDispatcher) { }
         renderThread.shutdown()
     }

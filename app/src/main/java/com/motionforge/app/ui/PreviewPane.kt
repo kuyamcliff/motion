@@ -22,6 +22,8 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -234,7 +236,32 @@ fun PreviewPane(app: AppState, ui: EditorUi, modifier: Modifier) {
         }) {
         val bmp = player.frame
         val r = imageRect()
-        if (ui.checkerboard) Canvas(Modifier.fillMaxSize()) {
+        // GPU preview: an OpenGL ES TextureView composites the frame (video decoded straight to GPU textures, layers
+        // cached as textures). Compose overlays (handles, guides) draw on top of it.
+        val gpu = remember(player) { player.gpuRenderer() }
+        val gpuOn = gpu != null && player.gpuWindow
+        if (gpu != null) {
+            AndroidView(modifier = Modifier.fillMaxSize(), factory = { ctx ->
+                android.view.TextureView(ctx).apply {
+                    isOpaque = true
+                    surfaceTextureListener = object : android.view.TextureView.SurfaceTextureListener {
+                        override fun onSurfaceTextureAvailable(st: android.graphics.SurfaceTexture, w: Int, h: Int) {
+                            gpu.attach(st, w, h); player.gpuWindow = true; player.requestRender()
+                        }
+                        override fun onSurfaceTextureSizeChanged(st: android.graphics.SurfaceTexture, w: Int, h: Int) { gpu.resize(w, h); player.requestRender() }
+                        override fun onSurfaceTextureDestroyed(st: android.graphics.SurfaceTexture): Boolean { player.gpuWindow = false; gpu.detach(); return true }
+                        override fun onSurfaceTextureUpdated(st: android.graphics.SurfaceTexture) {}
+                    }
+                }
+            })
+            // Zoom/pan and the transparency grid are applied on the GPU when presenting.
+            LaunchedEffect(r, ui.checkerboard) {
+                gpu.dst = floatArrayOf(r.left, r.top, r.width, r.height)
+                gpu.checker = ui.checkerboard
+                player.requestRender()
+            }
+        }
+        if (ui.checkerboard && !gpuOn) Canvas(Modifier.fillMaxSize()) {
             val s = 16f
             var y = r.top
             var row = 0
@@ -245,7 +272,7 @@ fun PreviewPane(app: AppState, ui: EditorUi, modifier: Modifier) {
                 y += s; row++
             }
         }
-        if (bmp != null) {
+        if (bmp != null && !gpuOn) {
             val img = remember(bmp, player.frame) { bmp.asImageBitmap() }
             Canvas(Modifier.fillMaxSize()) {
                 drawImage(img, srcOffset = IntOffset.Zero, srcSize = IntSize(img.width, img.height), dstOffset = IntOffset(r.left.toInt(), r.top.toInt()), dstSize = IntSize(r.width.toInt(), r.height.toInt()))

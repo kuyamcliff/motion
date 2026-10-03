@@ -781,6 +781,7 @@ fun SettingsScreen(app: AppState) {
             EnumPicker("Editing style", Settings.editingStyle, listOf("quick" to "Quick (simple)", "pro" to "Pro (all controls)")) { Settings.editingStyle = it; tick++ }
             LabeledSwitch("Timeline snapping", Settings.snapping) { Settings.snapping = it; tick++ }
             LabeledSwitch("Haptic feedback", Settings.haptics) { Settings.haptics = it; tick++ }
+            LabeledSwitch("GPU preview (OpenGL ES)", Settings.gpuPreview) { Settings.gpuPreview = it; tick++; app.toast("Takes effect when you reopen the project.") }
             NumberRow("Default still duration (s)", Settings.defaultStillDuration.toDouble(), 0.5, 30.0, onPreview = {}) { Settings.defaultStillDuration = it.toFloat(); tick++ }
             NumberRow("Autosave interval (s)", Settings.autosaveSeconds.toDouble(), 5.0, 120.0, onPreview = {}) { Settings.autosaveSeconds = it.toInt(); tick++ }
             SectionTitle("Preview & performance")

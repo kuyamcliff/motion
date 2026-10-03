@@ -435,7 +435,7 @@ json call(const std::string& m, const json& a) {
         const json* comp = activeComp(*snap);
         const json* L = comp ? findLayer(*comp, a.value("layer", "")) : nullptr;
         if (!L) return err("Layer not found.");
-        Mat4 w = E.renderer().layerWorldMatrix(*comp, *L, a.value("t", 0.0)), inv;
+        Mat4 w = E.queryRenderer().layerWorldMatrix(*comp, *L, a.value("t", 0.0)), inv;
         if (!w.inverse(inv)) return err("Layer transform is not invertible (zero scale?).");
         json pts = json::array();
         for (auto& p : jarr(a, "points")) {
@@ -736,6 +736,11 @@ struct Progress {
 };
 
 }  // namespace
+
+namespace mfa {
+mf::Engine* engineForGpu() { return g_engine.get(); }
+AndroidMediaProvider* mediaForGpu() { return g_media.get(); }
+}  // namespace mfa
 
 extern "C" {
 

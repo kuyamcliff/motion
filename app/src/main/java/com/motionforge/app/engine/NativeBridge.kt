@@ -19,6 +19,13 @@ object NativeBridge {
     @JvmStatic external fun nativeInit(config: String): String
     @JvmStatic external fun nativeCall(method: String, args: String): String
     @JvmStatic external fun nativeRenderBitmap(bitmap: Bitmap, t: Double, draft: Boolean, exportMode: Boolean): String
+    // GPU preview compositor (call on the GL thread with its EGL context current; see playback/GpuRenderer.kt).
+    @JvmStatic external fun nativeGpuInit(): Boolean
+    @JvmStatic external fun nativeGpuRelease()
+    @JvmStatic external fun nativeGpuPlan(t: Double, outW: Int, exportMode: Boolean, useProxies: Boolean): String
+    @JvmStatic external fun nativeGpuComposite(videoTex: IntArray?, videoMtx: FloatArray?, viewW: Int, viewH: Int, dx: Float, dy: Float, dw: Float, dh: Float,
+                                               checker: Boolean, clear: FloatArray?): String
+    @JvmStatic external fun nativeGpuReadback(bitmap: Bitmap): Boolean
     @JvmStatic external fun nativeRenderRgba(buffer: ByteBuffer, w: Int, h: Int, t: Double): Boolean
     @JvmStatic external fun nativeMixAudio(t0: Double, frames: Int, out: FloatArray, sampleRate: Int): Float
     @JvmStatic external fun nativeResetAudio()

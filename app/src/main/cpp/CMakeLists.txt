@@ -5,6 +5,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # The native engine is shared with host tests (engine/CMakeLists.txt).
 set(MF_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../../engine ${CMAKE_BINARY_DIR}/engine)
-add_library(motionforge SHARED jni_bridge.cpp android_media.cpp)
-target_link_libraries(motionforge PRIVATE mfengine android jnigraphics log)
+add_library(motionforge SHARED jni_bridge.cpp android_media.cpp gpu_compositor.cpp)
+target_link_libraries(motionforge PRIVATE mfengine android jnigraphics log GLESv2 EGL)
 target_compile_options(motionforge PRIVATE -O2)

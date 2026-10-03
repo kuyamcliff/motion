@@ -112,6 +112,10 @@ object Settings {
     var previewQuality: String
         get() = prefs.getString("previewQuality", "auto") ?: "auto"
         set(v) = prefs.edit().putString("previewQuality", v).apply()
+    /** Preview composites on the GPU (OpenGL ES); off = CPU bitmap preview. */
+    var gpuPreview: Boolean
+        get() = prefs.getBoolean("gpuPreview", true)
+        set(v) = prefs.edit().putBoolean("gpuPreview", v).apply()
     /** Preview decodes low-res proxy files when a clip has one (export always uses the originals). */
     var useProxies: Boolean
         get() = prefs.getBoolean("useProxies", true)
