@@ -17,7 +17,6 @@ import com.motionforge.app.engine.NativeBridge
 import com.motionforge.app.engine.arr
 import com.motionforge.app.engine.jo
 import com.motionforge.app.engine.objects
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -30,7 +29,7 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class UiE2ETest {
     @get:Rule val compose = createEmptyComposeRule()
-    @get:Rule val artifacts = FailureArtifacts()
+    @get:Rule val artifacts = FailureArtifacts { scenario?.close(); cleanup() }
     private var scenario: ActivityScenario<MainActivity>? = null
     private val name = "UI Test ${System.currentTimeMillis() % 100000}"
     private val timeout = 60_000L
@@ -41,9 +40,8 @@ class UiE2ETest {
         scenario = ActivityScenario.launch(MainActivity::class.java)
     }
 
-    @After
-    fun cleanup() {
-        scenario?.close()
+    /** Runs after the activity is closed (and after failure capture); see FailureArtifacts. */
+    private fun cleanup() {
         NativeBridge.call("listProjects").arr("projects").objects().filter { it.optString("name") == name }.forEach {
             NativeBridge.call("deleteProject", jo("id" to it.optString("id")))
         }
@@ -60,6 +58,21 @@ class UiE2ETest {
             if (System.currentTimeMillis() > end) throw AssertionError("condition not met within $timeout ms")
             Thread.sleep(100)
         }
+    }
+
+    private fun tapDesc(device: UiDevice, desc: String) {
+        val o = device.wait(androidx.test.uiautomator.Until.findObject(androidx.test.uiautomator.By.desc(desc)), timeout)
+            ?: throw AssertionError("no node with description '$desc'")
+        o.click()
+    }
+
+    private fun pressUntil(device: UiDevice, key: Int, cond: () -> Boolean) {
+        repeat(3) {
+            device.pressKeyCode(key)
+            val end = System.currentTimeMillis() + 20_000
+            while (System.currentTimeMillis() < end) { if (cond()) return; Thread.sleep(100) }
+        }
+        throw AssertionError("key $key had no effect after 3 presses")
     }
 
     private fun waitText(t: String) = compose.waitUntil(timeout) {
@@ -104,9 +117,16 @@ class UiE2ETest {
         val t0 = app.editor.playhead
         compose.onNodeWithContentDescription("Play").performClick()
         poll { app.player?.playing == true && app.editor.playhead > t0 }
-        // Pause with the Space shortcut (hardware keyboard path through MainActivity.dispatchKeyEvent).
-        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).pressKeyCode(android.view.KeyEvent.KEYCODE_SPACE)
+        // Pause by tapping the Pause button through UiAutomator (accessibility), which works while Compose is busy.
+        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        tapDesc(device, "Pause")
         poll { app.player?.playing == false }
+        waitDesc("Play")
+
+        // Space toggles playback (hardware keyboard path through MainActivity.dispatchKeyEvent). Key injection goes
+        // to whichever window has input focus, which a slow emulator can briefly hand to System UI, so retry the press.
+        pressUntil(device, android.view.KeyEvent.KEYCODE_SPACE) { app.player?.playing == true }
+        pressUntil(device, android.view.KeyEvent.KEYCODE_SPACE) { app.player?.playing == false }
         waitDesc("Play")
 
         // Save via menu, go back home, reopen: the layer persists.

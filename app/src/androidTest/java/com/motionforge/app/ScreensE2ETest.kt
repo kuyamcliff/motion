@@ -21,7 +21,6 @@ import com.motionforge.app.engine.obj
 import com.motionforge.app.engine.objects
 import com.motionforge.app.export.ExportQueue
 import org.json.JSONObject
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -38,7 +37,7 @@ import java.io.File
 @RunWith(AndroidJUnit4::class)
 class ScreensE2ETest {
     @get:Rule val compose = createEmptyComposeRule()
-    @get:Rule val artifacts = FailureArtifacts()
+    @get:Rule val artifacts = FailureArtifacts { if (::scenario.isInitialized) scenario.close(); cleanup() }
     @org.junit.Before fun bundledAssets() { org.junit.Assert.assertTrue("bundled model/samples installed", MfApplication.awaitBundledAssets()) }
     private lateinit var scenario: ActivityScenario<MainActivity>
     private lateinit var app: AppState
@@ -54,9 +53,8 @@ class ScreensE2ETest {
         scenario.onActivity { app = it.app }
     }
 
-    @After
-    fun cleanup() {
-        scenario.close()
+    /** Runs after the activity is closed (and after failure capture); see FailureArtifacts. */
+    private fun cleanup() {
         if (projectId.isNotEmpty()) NativeBridge.call("deleteProject", jo("id" to projectId))
     }
 

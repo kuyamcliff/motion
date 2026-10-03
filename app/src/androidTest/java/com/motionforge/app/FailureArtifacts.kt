@@ -36,7 +36,11 @@ object TestArtifacts {
 }
 
 /** On any test failure, saves a screenshot and the accessibility window dump via [TestArtifacts]. */
-class FailureArtifacts : TestWatcher() {
+class FailureArtifacts(private val closeUi: () -> Unit = {}) : TestWatcher() {
+    // JUnit runs @After before a rule's failed(), so a test that closes its activity in @After would leave only the
+    // launcher on screen. Tests pass their activity teardown here instead; it runs after the capture.
+    override fun finished(d: Description) { closeUi() }
+
     override fun failed(e: Throwable?, d: Description) {
         try {
             val inst = InstrumentationRegistry.getInstrumentation()
