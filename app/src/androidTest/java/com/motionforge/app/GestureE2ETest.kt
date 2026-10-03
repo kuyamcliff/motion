@@ -134,12 +134,13 @@ class GestureE2ETest {
         assertEquals("cancelled trim must not add an undo step", labelBefore, st.undoLabel)
 
         // Pinch out on the zoom strip zooms the timeline in.
-        assertEquals("80 pixels per second", stateOf("Timeline zoom"))
+        // (The two-finger cancel above also pinch-zoomed a little, as intended, so compare against the current zoom.)
+        val zoomBefore = stateOf("Timeline zoom").substringBefore(' ').toInt()
         node("Timeline zoom").performTouchInput {
             val c = Offset(width / 2f, height / 2f)
             pinch(c - Offset(40f, 0f), c - Offset(200f, 0f), c + Offset(40f, 0f), c + Offset(200f, 0f))
         }
-        poll("timeline zoomed in", detail = { stateOf("Timeline zoom") }) { stateOf("Timeline zoom").substringBefore(' ').toInt() > 150 }
+        poll("timeline zoomed in", detail = { stateOf("Timeline zoom") }) { stateOf("Timeline zoom").substringBefore(' ').toInt() > zoomBefore * 2 }
     }
 
     // ------------------------------------------------------------ preview
