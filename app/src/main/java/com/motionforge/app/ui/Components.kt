@@ -86,8 +86,10 @@ fun MfTheme(content: @Composable () -> Unit) {
             extraSmall = RoundedCornerShape(6.dp), small = RoundedCornerShape(10.dp), medium = RoundedCornerShape(14.dp),
             large = RoundedCornerShape(18.dp), extraLarge = RoundedCornerShape(24.dp),
         ),
-        content = content,
-    )
+    ) {
+        // Default text/icon colour for everything not on a Material surface (most of the app draws on plain Boxes).
+        androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides Color.White, content = content)
+    }
 }
 
 /** Rounded surface card used across screens. */

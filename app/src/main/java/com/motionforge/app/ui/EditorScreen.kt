@@ -1,5 +1,6 @@
 package com.motionforge.app.ui
 
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
@@ -140,10 +141,11 @@ fun EditorScreen(app: AppState) {
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Bg)) {
         val wide = maxWidth > 700.dp
+        val shortHeight = maxHeight < 520.dp
         val fullHeight = maxHeight
         Column(Modifier.fillMaxSize()) {
             EditorTopBar(app, ui)
-            if (wide && maxHeight < 520.dp) {
+            if (wide && shortHeight) {
                 // Landscape phone: preview + transport on the left; timeline (or the open panel) and tools on the right.
                 Row(Modifier.weight(1f)) {
                     Column(Modifier.weight(0.56f).fillMaxHeight()) {
@@ -196,6 +198,7 @@ fun EditorTopBar(app: AppState, ui: EditorUi) {
     // On phone widths seven 48 dp buttons would leave the title a few dp; secondary actions move into the menu there.
     BoxWithConstraints(Modifier.fillMaxWidth()) {
     val compact = maxWidth < 480.dp
+    val roomy = maxWidth >= 360.dp
     Row(Modifier.fillMaxWidth().background(Panel).statusBarsPadding().padding(horizontal = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         IconBtn(Icons.AutoMirrored.Filled.ArrowBack, "Back to projects") { app.back() }
         Column(Modifier.weight(1f).combinedClickable(onClick = { renameProject = true })) {
@@ -225,7 +228,7 @@ fun EditorTopBar(app: AppState, ui: EditorUi) {
             .clickable { app.player?.pause(); app.go(Screen.Export) }.semantics(mergeDescendants = true) { contentDescription = "Export" }
             .padding(horizontal = 12.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Filled.FileUpload, null, tint = Color.White, modifier = Modifier.size(16.dp))
-            if (!compact || maxWidth >= 360.dp) Text(" Export", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            if (!compact || roomy) Text(" Export", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
         }
         Box {
             IconBtn(Icons.Filled.MoreVert, "More") { more = true }
@@ -272,9 +275,12 @@ fun Transport(st: EditorState, player: Player, ui: EditorUi) {
     // Timecode left, the core transport centred, loop + extras right. Fits a 320 dp phone without scrolling.
     Row(Modifier.fillMaxWidth().background(Panel).padding(horizontal = 6.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(st.timecode(st.playhead), fontFamily = FontFamily.Monospace, fontSize = 12.sp, maxLines = 1, softWrap = false)
-            Text("${if (player.playing) "%.0f fps".format(player.fpsActual) else "%.0f ms".format(player.renderMs)} · ${player.quality}${if (player.gpuWindow) " · GPU" else ""}",
-                fontSize = 10.sp, color = TextDim, maxLines = 1, softWrap = false)
+            // Hours are dropped for comps under an hour so the timecode fits beside the transport on phones.
+            Text(st.timecode(st.playhead).let { if (st.duration < 3600 && it.length > 8) it.substring(3) else it }, fontFamily = FontFamily.Monospace,
+                fontSize = 12.sp, maxLines = 1, softWrap = false,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Clip)
+            Text("${if (player.gpuWindow) "GPU · " else "CPU · "}${if (player.playing) "%.0f fps".format(player.fpsActual) else "%.0f ms".format(player.renderMs)}",
+                fontSize = 10.sp, color = if (player.gpuWindow) Color(0xFF6EE7B7) else TextDim, maxLines = 1, softWrap = false)
         }
         IconBtn(Icons.Filled.Diamond, "Previous keyframe", tint = KeyColor) { jumpTo(st.keyframeTimes(st.selectedLayer), false) }
         RepeatButton(Icons.Filled.NavigateBefore, "Previous frame") { player.stepFrames(-1) }
