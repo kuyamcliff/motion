@@ -33,9 +33,9 @@ mkdir -p .cache/models && curl -fL -o .cache/models/ggml-tiny.en-q5_1.bin \
 ## The loop Claude Code runs
 
 ```bash
-# 1. Build the debug APK and the test APK. Build BEFORE starting the emulator: a 4-core container
+# 1. Build the app and test APKs (the non-debuggable "uitest" build type, so ART can AOT-compile it). Build BEFORE starting the emulator: a 4-core container
 #    can't run Gradle/NDK and a software emulator at once (system_server gets killed).
-./gradlew :app:assembleDebug :app:assembleDebugAndroidTest -Pmf.abis=x86_64 && ./gradlew --stop
+./gradlew :app:assembleUitest :app:assembleUitestAndroidTest -Pmf.abis=x86_64 && ./gradlew --stop
 
 # 2. Boot the emulator and wait until it is genuinely usable (boot + package manager + settled load)
 scripts/android/start-emulator.sh mf30
@@ -69,8 +69,11 @@ adb logcat -d -b crash                                            # crashes
 8. **Use `scripts/android/wait-stable.sh` before installing** after any disturbance. It waits for the same `system_server` PID for 2 minutes with core services registered.
 9. **More vCPUs help.** Software emulation runs one thread per vCPU; `-cores 4` on a 4-core container noticeably shortens boot and test time.
 10. **Don't edit a shell script while it's running.** Bash reads scripts as it executes them.
-11. **AOT-compile the app before UI tests** (`cmd package compile -m speed -f`). Debug builds otherwise verify and JIT Compose classes on first use. Under software emulation that can freeze the UI thread for over 15 s and cause `keyDispatchingTimedOut` ANRs, which abort the instrumentation run. `run-tests.sh` compiles the app and runs **one instrumentation per test class**, so a crash or ANR can't abort the other classes.
-12. **`adb logcat -d` can take minutes** on a slow emulator. Filter with `-b crash` or `-t N`, and wrap commands in `timeout`.
+11. **AOT-compile the app before UI tests** (`cmd package compile -m speed-profile -f`). Debuggable builds can't go beyond `quicken`, so the tests use the non-debuggable `uitest` build type. A full `speed` compile fails in dex2oat on the very large material-icons dex. Without AOT, Compose classes are verified and JIT-compiled on first use. Under software emulation that can freeze the UI thread for over 15 s and cause `keyDispatchingTimedOut` ANRs, which abort the instrumentation run. `run-tests.sh` compiles the app and runs **one instrumentation per test class**, so a crash or ANR can't abort the other classes.
+12. **Turn off Wi-Fi and mobile data.** On a slow emulator `WifiHandlerThread` can crash `system_server` ("Could not fetch IpMemoryStore"). The tests need no network; `start-emulator.sh` runs `svc wifi disable; svc data disable`.
+13. **Don't use `set -e` in polling scripts,** and don't `pkill -f` a pattern that also appears in your own command line: it kills the calling shell.
+14. **Capture failure artifacts before teardown.** JUnit runs `@After` before a `TestWatcher`'s `failed()`, so close the activity from the rule (see `FailureArtifacts`). Otherwise the screenshot shows the launcher.
+15. **`adb logcat -d` can take minutes** on a slow emulator. Filter with `-b crash` or `-t N`, and wrap commands in `timeout`.
 
 ## Device matrix
 

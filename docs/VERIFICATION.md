@@ -16,17 +16,17 @@ All results below come from the build environment: a Linux container, and an And
 
 ## Android device suites
 
-29 tests in 8 classes, run by `scripts/android/run-tests.sh` (one instrumentation per class).
+30 tests in 7 classes, run by `scripts/android/run-tests.sh` (one instrumentation per class) on the non-debuggable `uitest` build. The final full run (`test-logs/android-full-suite-uitest.txt`) passed 29/30 tests: every class except `UiE2ETest`, whose pause step relied on an injected Space key that didn't arrive. The test now taps Pause through UiAutomator and retries the Space key, and passes (`test-logs/android-UiE2ETest-rerun.txt`).
 
 | Class | Result on the current code | Covers |
 |---|---|---|
 | `EngineE2ETest` (7) | **7/7** | edit/undo/render/persist, crash recovery, Whisper captions on device, MP4 + GIF export validation, script single-undo + permission denial, encrypted package round trip |
-| `UiE2ETest` (1) | **1/1** | new project → add text → undo/redo buttons → frame step → play → pause (Space) → save → reopen |
+| `UiE2ETest` (1) | **1/1** | new project → add text → undo/redo buttons → frame step → play → tap Pause → Space play/pause → save → reopen |
 | `WorkflowRegressionTest` (1) | **1/1** | import video → trim → split → invert FX → mask → animated title → audio → Whisper captions → MP4 export → reopen → pixel and track inspection of the export |
 | `CombinationsDeviceTest` (2) | **2/2** | 24 random feature combinations, each with save/reopen and render comparison; 500-layer stress test |
 | `VideoLayerDeviceTest` (2) | **2/2** | MediaCodec decode → composite → re-export pixels; 38-step decoder seek stress |
 | `CapsuleScriptDeviceTest` (2) | **2/2** | Capsule v2 controls, plus the `.mfcapsule` export → delete → import → insert round trip; Script API v2 across every area as one undo step |
-| `ScreensE2ETest` (15) | **15/15 have each passed on the current code**. Whole-class runs on the *debug* build were aborted by an emulator input-dispatch ANR in the first test, so the class now targets the non-debuggable `uitest` build (see below). | every screen and inspector panel, verified after reopening |
+| `ScreensE2ETest` (15) | **15/15 as one class run** on the `uitest` build. On the *debug* build, an emulator input-dispatch ANR in the first test aborted whole-class runs (see below). | every screen and inspector panel, verified after reopening |
 | `FailureArtifacts` (rule) | — | screenshot + UI dump on every failure |
 
 ## Bugs the device and combination suites found (all fixed)
@@ -49,8 +49,10 @@ These are documented in [CLOUD_ANDROID_TESTING.md](CLOUD_ANDROID_TESTING.md):
 
 * **Android 11's "Lost network stack" crash loop** of `system_server`: rate-limited through DeviceConfig.
 * **"System UI isn't responding" dialogs** covering the app: `hide_error_dialogs`.
-* **Debuggable apps can't be AOT-compiled beyond `quicken`.** Compose then runs through the JIT, which under software emulation stalls the UI thread into input-dispatch ANRs. Device tests therefore target the **`uitest`** build type (debug-signed, not debuggable, AOT `speed`).
+* **Debuggable apps can't be AOT-compiled beyond `quicken`.** Compose then runs through the JIT, which under software emulation stalls the UI thread into input-dispatch ANRs. Device tests therefore target the **`uitest`** build type (debug-signed, not debuggable, AOT `speed-profile`; a full `speed` compile fails in dex2oat on the large material-icons dex).
 * **Builds while tests run can kill `system_server`.** The runner waits for a stable `system_server` PID.
+* **The Wi-Fi stack crashed `system_server`** (`WifiHandlerThread: Could not fetch IpMemoryStore`) when the network stack was slow. `start-emulator.sh` turns off Wi-Fi and mobile data, which the tests don't need.
+* **Failure screenshots showed the launcher:** JUnit runs `@After` (which closed the activity) before a rule's `failed()`. UI tests now close the activity from the `FailureArtifacts` rule, after the capture.
 
 ## Not verified here
 
