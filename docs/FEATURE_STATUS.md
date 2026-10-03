@@ -13,7 +13,7 @@ Each feature is marked with the strongest evidence that currently exists for it:
 
 ## Summary
 
-Device suite: 30 tests in 7 classes, all passing on the current code; the whole-suite run on the `uitest` build is in VERIFICATION.md. Host: 59 test groups, including 300 + 3,000 combinations and 402 effect × layer pairs.
+Device suite: 34 tests in 8 classes, all passing on the current code; the whole-suite run on the `uitest` build is in VERIFICATION.md. Host: 59 test groups, including 300 + 3,000 combinations and 402 effect × layer pairs.
 
 Bugs found and fixed by this phase's tests:
 1. Extension effects never appeared in the effect browser, and the registry was cached for the app's lifetime.
@@ -58,16 +58,16 @@ Test names refer to `app/src/androidTest/...` (device) and `engine/tests/...` (h
 | Play / pause / frame step | WORKING_ANDROID | UiE2ETest |
 | Audio-synced playback | PARTIAL | Runs on device; A/V sync not measured automatically |
 | Adaptive preview resolution | PARTIAL | Implemented; performance not measured on real phones |
-| Preview handles (move/scale/rotate), two-finger rotate | UI_ONLY | Gesture code present; no automated gesture test yet |
-| Mask draw, pen tool, freehand draw | UI_ONLY | Gesture code present; masks verified via panel (ScreensE2ETest) |
+| Preview handles (move/scale/rotate), two-finger rotate | WORKING_ANDROID (move, scale) / UI_ONLY (rotate handle, two-finger rotate) | GestureE2ETest.preview_moveScaleMaskDrawAndPen: real touch drags, one undo step each |
+| Mask draw, pen tool, freehand draw | WORKING_ANDROID | GestureE2ETest.preview_moveScaleMaskDrawAndPen (mask rectangle, freehand stroke → shape, three pen taps → shape) |
 | Safe areas, grid, rulers, checkerboard | UI_ONLY | Overlay toggles; not pixel-tested |
 
 ## Timeline gestures
 | Feature | Status | Evidence |
 |---|---|---|
-| Trim / move clips with snapping + haptics | UI_ONLY | The engine ops are verified; the drag gesture isn't automated |
-| Two-finger pan, pinch zoom on tracks | UI_ONLY | Added in this phase |
-| Second finger cancels a drag (no commit) | UI_ONLY | Added in this phase |
+| Trim / move clips with snapping + haptics | WORKING_ANDROID (drag trim and move, one undo step each) / WORKING_ENGINE_ONLY (snapping) | GestureE2ETest.timeline_trimMoveTwoFingerCancelAndPinch (snapping off in the test) |
+| Two-finger pan, pinch zoom on tracks | WORKING_ANDROID (pinch on the zoom strip) / PARTIAL (two-finger pan not asserted) | GestureE2ETest |
+| Second finger cancels a drag (no commit) | WORKING_ANDROID | GestureE2ETest: clip unchanged, no undo step added |
 | Edge auto-scroll while dragging | UI_ONLY | Added in this phase |
 | Multi-select, moving several clips | UI_ONLY | Added in this phase (Multi-select chip) |
 | Swipe actions | NOT_IMPLEMENTED | — |
@@ -79,7 +79,7 @@ Test names refer to `app/src/androidTest/...` (device) and `engine/tests/...` (h
 | Text animation presets / custom animators | WORKING_ANDROID (presets) / WORKING_ENGINE_ONLY (custom) | ScreensE2ETest; script API v2 test |
 | Shapes, merge ops, path operators | WORKING_ANDROID | ScreensE2ETest.shapePanel_itemsAndPathOperators |
 | Keyframes, easing, bezier | WORKING_ANDROID | ScreensE2ETest.keyframesPanel_graphEditorEasingExpression, WorkflowRegressionTest |
-| Graph editor (view, drag keyframes) | PARTIAL | Opens on device and is verified; dragging a keyframe isn't automated |
+| Graph editor (view, drag keyframes), bezier handles | WORKING_ANDROID | GestureE2ETest.graphEditor_dragKeyframeAndBezierHandles: key dragged 2 s → 3 s, custom bezier set, both persist |
 | Expressions | WORKING_ANDROID | ScreensE2ETest (apply + persist), host expression tests |
 | 67 effects | WORKING_ANDROID (browser, glow, invert) / WORKING_ENGINE_ONLY (all 67 × 6 layer kinds) | ScreensE2ETest, WorkflowRegressionTest (invert pixels), test_combo |
 | Masks | WORKING_ANDROID | ScreensE2ETest, WorkflowRegressionTest (mask pixels in the export) |
@@ -131,6 +131,7 @@ Test names refer to `app/src/androidTest/...` (device) and `engine/tests/...` (h
 | Remove unused media | WORKING_ANDROID | same |
 | Clear media caches | UI_ONLY | — |
 | Thumbnails | PARTIAL | Video/image thumbnails in the media manager |
+| Proxies (create, use in preview, remove, preview toggle) | WORKING_ANDROID | VideoLayerDeviceTest.proxyUsedInPreviewOriginalInExport: proxy transcoded on device; preview decodes it; export and the "off" setting decode the original; a deleted proxy falls back silently; persists across reopen. Host: video_proxy_used_in_preview_never_in_export |
 | Proxies | NOT_IMPLEMENTED | Needs a transcoder; the adaptive preview resolution covers some of this |
 
 ## Library, capsules, scripting, extensions

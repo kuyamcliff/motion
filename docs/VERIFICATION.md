@@ -24,7 +24,8 @@ All results below come from the build environment: a Linux container, and an And
 | `UiE2ETest` (1) | **1/1** | new project → add text → undo/redo buttons → frame step → play → tap Pause → Space play/pause → save → reopen |
 | `WorkflowRegressionTest` (1) | **1/1** | import video → trim → split → invert FX → mask → animated title → audio → Whisper captions → MP4 export → reopen → pixel and track inspection of the export |
 | `CombinationsDeviceTest` (2) | **2/2** | 24 random feature combinations, each with save/reopen and render comparison; 500-layer stress test |
-| `VideoLayerDeviceTest` (2) | **2/2** | MediaCodec decode → composite → re-export pixels; 38-step decoder seek stress |
+| `VideoLayerDeviceTest` (3) | **3/3** | MediaCodec decode → composite → re-export pixels; 38-step decoder seek stress; proxies (transcode on device, preview uses the proxy, export and the "off" setting use the original, deleted proxy falls back, persists) |
+| `GestureE2ETest` (3) | **3/3** | real touch input: timeline trim, move, two-finger cancel, pinch zoom; preview move and scale handles, mask rectangle, freehand draw, pen tool; graph-editor keyframe drag and bezier handles (persisted) |
 | `CapsuleScriptDeviceTest` (2) | **2/2** | Capsule v2 controls, plus the `.mfcapsule` export → delete → import → insert round trip; Script API v2 across every area as one undo step |
 | `ScreensE2ETest` (15) | **15/15 as one class run** on the `uitest` build. On the *debug* build, an emulator input-dispatch ANR in the first test aborted whole-class runs (see below). | every screen and inspector panel, verified after reopening |
 | `FailureArtifacts` (rule) | — | screenshot + UI dump on every failure |
@@ -42,6 +43,15 @@ All results below come from the build environment: a Linux container, and an And
 9. **Playback crashed on stop:** AudioTrack was used after release.
 10. **The UI thread starved during playback:** a spinning frame loop, the render thread at high priority, and the inspector re-evaluating every frame.
 11. **The first launch copied the 31 MB speech model on the main thread** (ANR risk on low-end phones).
+
+Found by the gesture tests (`GestureE2ETest`), which drive real touch input:
+
+12. **On phones the timeline showed no clips.** The "pinch here to zoom" hint wrapped one letter per line, which grew the zoom strip until the layer rows had zero height, so nothing could be seen or touched. The hint is now single-line, and the compact timeline has a 140 dp minimum.
+13. **Trims and moves stalled after the first frame of a drag.** The clip drag handler was keyed on the document revision and scroll position, so the first live-preview update or edge auto-scroll restarted it mid-gesture.
+14. **Pinch-to-zoom on the zoom strip only worked over the hint text.** The handler ignored touches that started on a chip, and chips fill the strip on a phone.
+15. **Pen tool points were lost when tapping quickly:** the second of two quick taps counted as a double tap (view reset).
+16. **The editor top bar was unreadable on phones.** The title had no explicit color (dark on dark), and the timecode wrapped in a column about 8 dp wide. On phones, the command palette and composition settings now live in the More menu.
+17. **(Found while fixing 16.)** The phone-only menu items were dropped, because `forEach` bound only to the second list.
 
 ## Test-infrastructure findings (emulator, not app bugs)
 
