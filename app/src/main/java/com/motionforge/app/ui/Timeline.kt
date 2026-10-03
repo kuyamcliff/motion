@@ -153,7 +153,7 @@ fun Timeline(app: AppState, ui: EditorUi, modifier: Modifier) {
             .semantics { contentDescription = "Timeline zoom"; stateDescription = "${ui.timelineZoom.roundToInt()} pixels per second" }
             .pointerInput(Unit) {
                 awaitEachGesture {
-                    awaitFirstDown()
+                    awaitFirstDown(requireUnconsumed = false)  // pinches usually start on a chip; chips cancel their tap on movement
                     do {
                         val e = awaitPointerEvent()
                         if (e.changes.none { it.pressed }) break
