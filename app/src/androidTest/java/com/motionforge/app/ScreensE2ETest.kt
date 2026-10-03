@@ -227,7 +227,8 @@ class ScreensE2ETest {
     fun timePanelAndCommandPalette() {
         newProject()
         compose.runOnIdle { app.editor.addLayer("solid") }
-        tapDesc("Command palette")
+        // A toolbar icon on wide screens; in the More menu on phones.
+        if (nodesExist(hasContentDescription("Command palette"))) tapDesc("Command palette") else { tapDesc("More"); tap("Command palette") }
         compose.onNode(hasContentDescription("Command search")).performTextInput("Add null")
         // The search field also contains "Add null": tap the command row, not the field.
         waitFor(hasText("Add null") and !hasSetTextAction())

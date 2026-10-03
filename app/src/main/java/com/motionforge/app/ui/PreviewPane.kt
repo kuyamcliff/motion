@@ -103,7 +103,9 @@ fun PreviewPane(app: AppState, ui: EditorUi, modifier: Modifier) {
         .semantics { contentDescription = "Preview canvas"; stateDescription = "Zoom ${(zoom * 100).roundToInt()}%" }
         .pointerInput(ui.previewMode, sel?.optString("id")) {
             detectTapGestures(
-                onDoubleTap = { zoom = 1f; pan = Offset.Zero },
+                // Double tap resets the view, except with the pen: there, quick taps place points and must never be
+                // swallowed as a double tap (with onDoubleTap set, the second of two quick taps is not delivered to onTap).
+                onDoubleTap = if (ui.previewMode == "pen") null else { _ -> zoom = 1f; pan = Offset.Zero },
                 onTap = { p ->
                     val c = toComp(p)
                     when (ui.previewMode) {

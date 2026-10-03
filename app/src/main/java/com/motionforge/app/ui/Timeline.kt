@@ -170,7 +170,10 @@ fun Timeline(app: AppState, ui: EditorUi, modifier: Modifier) {
             Chip(if (ui.expandedTracks) "Compact" else "Expand") { ui.expandedTracks = !ui.expandedTracks }
             Chip(if (Settings.snapping) "Snap on" else "Snap off", Settings.snapping) { Settings.snapping = !Settings.snapping }
             Chip(if (ui.multiSelect) "Multi-select on" else "Multi-select", ui.multiSelect) { ui.multiSelect = !ui.multiSelect }
-            SmallLabel("  pinch here to zoom · drag to pan")
+            // Single line, ellipsized: on a phone the chips fill the width and a wrapping hint would grow the strip
+            // vertically until it pushed the layer rows out of the timeline.
+            Text("  pinch here to zoom · drag to pan", color = TextDim, fontSize = 12.sp, maxLines = 1, softWrap = false,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
         }
     }
 }

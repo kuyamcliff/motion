@@ -65,6 +65,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.motionforge.app.AppState
@@ -131,7 +132,7 @@ fun EditorScreen(app: AppState) {
                 PreviewPane(app, ui, Modifier.weight(if (panelOpen) 0.75f else 1f).fillMaxWidth())
                 Transport(st, player, ui)
                 if (panelOpen) {
-                    Timeline(app, ui, Modifier.height(fullHeight * 0.16f).fillMaxWidth())
+                    Timeline(app, ui, Modifier.height(maxOf(fullHeight * 0.16f, 140.dp)).fillMaxWidth())  // ruler + one row + zoom strip
                     Column(Modifier.weight(1f).fillMaxWidth().background(Panel)) { InspectorPanel(app, ui) }
                 } else {
                     Timeline(app, ui, Modifier.weight(0.7f).fillMaxWidth())
@@ -149,14 +150,19 @@ fun EditorTopBar(app: AppState, ui: EditorUi) {
     val st = app.editor
     var more by remember { mutableStateOf(false) }
     var renameProject by remember { mutableStateOf(false) }
+    // On phone widths seven 48 dp buttons would leave the title a few dp; secondary actions move into the menu there.
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+    val compact = maxWidth < 480.dp
     Row(Modifier.fillMaxWidth().background(Color(0xFF0C0D10)).padding(horizontal = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         IconBtn(Icons.AutoMirrored.Filled.ArrowBack, "Back to projects") { app.back() }
         Column(Modifier.weight(1f).combinedClickable(onClick = { renameProject = true })) {
-            Text(st.doc.optJSONObject("meta")?.optString("name") ?: "", fontWeight = FontWeight.SemiBold, maxLines = 1, fontSize = 14.sp)
+            Text(st.doc.optJSONObject("meta")?.optString("name") ?: "", fontWeight = FontWeight.SemiBold, maxLines = 1, fontSize = 14.sp,
+                color = Color.White, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val (icon, label) = when (st.saveStatus) { "saved" -> Icons.Filled.CloudDone to "Saved"; "error" -> Icons.Filled.ErrorOutline to "Save error"; else -> Icons.Filled.Edit to "Unsaved changes" }
                 Icon(icon, label, tint = if (st.saveStatus == "error") Color.Red else TextDim, modifier = Modifier.size(14.dp))
-                Text(" ${st.comp.optString("name")} · ${st.timecode(st.playhead)}", fontSize = 11.sp, color = TextDim, fontFamily = FontFamily.Monospace)
+                Text(if (compact) " ${st.timecode(st.playhead)}" else " ${st.comp.optString("name")} · ${st.timecode(st.playhead)}",
+                    fontSize = 11.sp, color = TextDim, fontFamily = FontFamily.Monospace, maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)
             }
         }
         // Undo/redo: tap = act, long press = history list.
@@ -168,13 +174,15 @@ fun EditorTopBar(app: AppState, ui: EditorUi) {
             .semantics { contentDescription = if (st.canRedo) "Redo ${st.redoLabel}" else "Redo (nothing to redo)" }, contentAlignment = Alignment.Center) {
             Icon(Icons.AutoMirrored.Filled.Redo, null, tint = if (st.canRedo) Color.White else Color.White.copy(alpha = 0.3f))
         }
-        IconBtn(Icons.Filled.Search, "Command palette") { app.paletteOpen = true }
-        IconBtn(Icons.Filled.Tune, "Composition settings") { ui.tab = InspectorTab.Comp }
+        if (!compact) {
+            IconBtn(Icons.Filled.Search, "Command palette") { app.paletteOpen = true }
+            IconBtn(Icons.Filled.Tune, "Composition settings") { ui.tab = InspectorTab.Comp }
+        }
         IconBtn(Icons.Filled.FileUpload, "Export") { app.player?.pause(); app.go(Screen.Export) }
         Box {
             IconBtn(Icons.Filled.MoreVert, "More") { more = true }
             DropdownMenu(more, { more = false }) {
-                listOf(
+                (if (compact) listOf("Command palette" to { app.paletteOpen = true }, "Composition settings" to { ui.tab = InspectorTab.Comp }) else emptyList<Pair<String, () -> Unit>>()) + listOf(
                     "Save" to { st.save(); app.toast("Saved") },
                     "Save version (checkpoint)" to { st.save(version = true); app.toast("Version saved") },
                     "History" to { ui.historyOpen = true },
@@ -194,6 +202,7 @@ fun EditorTopBar(app: AppState, ui: EditorUi) {
                 ).forEach { (t, f) -> DropdownMenuItem(text = { Text(t) }, onClick = { more = false; f() }) }
             }
         }
+    }
     }
     if (renameProject) TextInputDialog("Rename project", st.doc.optJSONObject("meta")?.optString("name") ?: "", onDismiss = { renameProject = false }) {
         st.op("setProjectName", "name" to it)
