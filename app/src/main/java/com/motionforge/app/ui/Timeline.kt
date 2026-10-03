@@ -35,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -237,6 +238,10 @@ private fun LayerRow(app: AppState, ui: EditorUi, layer: JSONObject, rowH: andro
         }
         Box(Modifier.weight(1f).fillMaxSize()) {
             var dragMode by remember { mutableStateOf("") }
+            val curLayer by rememberUpdatedState(layer)
+            val curPx by rememberUpdatedState(pxPerSec)
+            val curScroll by rememberUpdatedState(scrollX)
+            val curSnap by rememberUpdatedState(snapT)
             Canvas(Modifier.fillMaxSize()
                 .semantics { contentDescription = "Clip ${layer.optString("name")} from ${"%.2f".format(layer.optDouble("in"))} to ${"%.2f".format(layer.optDouble("out"))} seconds" }
                 .pointerInput(id, pxPerSec, scrollX) {
@@ -258,11 +263,17 @@ private fun LayerRow(app: AppState, ui: EditorUi, layer: JSONObject, rowH: andro
                         },
                     )
                 }
-                .pointerInput(id, pxPerSec, scrollX, st.revision) {
+                // Keyed on the layer id only. Keying on the revision or scroll position would restart this handler (and
+                // drop the drag) as soon as the live preview of the first move changed the document or auto-scrolled.
+                // Current values are read through rememberUpdatedState; the layer is snapshotted when the finger lands.
+                .pointerInput(id) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
-                        val inX = (layer.optDouble("in") * pxPerSec - scrollX).toFloat()
-                        val outX = (layer.optDouble("out") * pxPerSec - scrollX).toFloat()
+                        val layer = curLayer
+                        val pxPerSec = curPx
+                        val scrollX0 = curScroll
+                        val inX = (layer.optDouble("in") * pxPerSec - scrollX0).toFloat()
+                        val outX = (layer.optDouble("out") * pxPerSec - scrollX0).toFloat()
                         val edge = 28f
                         val mode = when {
                             layer.optBoolean("locked") -> "pan"
@@ -284,7 +295,7 @@ private fun LayerRow(app: AppState, ui: EditorUi, layer: JSONObject, rowH: andro
                                     if (Settings.haptics) view.performHapticFeedback(if (android.os.Build.VERSION.SDK_INT >= 30) HapticFeedbackConstants.REJECT else HapticFeedbackConstants.LONG_PRESS)
                                 }
                                 ui.timelineZoom = (ui.timelineZoom * e.calculateZoom()).coerceIn(8f, 1200f)
-                                setScroll((scrollX - e.calculatePan().x).coerceAtLeast(0f)); e.changes.forEach { it.consume() }; continue
+                                setScroll((curScroll - e.calculatePan().x).coerceAtLeast(0f)); e.changes.forEach { it.consume() }; continue
                             }
                             val c = e.changes.first()
                             if (!c.pressed) break
@@ -296,20 +307,20 @@ private fun LayerRow(app: AppState, ui: EditorUi, layer: JSONObject, rowH: andro
                             // Edge auto-scroll: dragging a clip/handle near either edge scrolls the timeline.
                             if (mode != "pan") {
                                 val edgeZone = 48f
-                                val step = when { c.position.x > size.width - edgeZone -> 12f; c.position.x < edgeZone && scrollX > 0 -> -12f; else -> 0f }
-                                if (step != 0f) { setScroll((scrollX + step).coerceAtLeast(0f)); autoScroll += step }
+                                val step = when { c.position.x > size.width - edgeZone -> 12f; c.position.x < edgeZone && scrollX0 + autoScroll > 0 -> -12f; else -> 0f }
+                                if (step != 0f) { setScroll((scrollX0 + autoScroll + step).coerceAtLeast(0f)); autoScroll += step }
                             }
-                            val t = ((c.position.x + scrollX + autoScroll) / pxPerSec).toDouble()
+                            val t = ((c.position.x + scrollX0 + autoScroll) / pxPerSec).toDouble()
                             when (mode) {
-                                "trimIn" -> { setLens(Offset(c.position.x, 0f)); st.preview(jo("op" to "trimLayer", "layer" to id, "edge" to "in", "t" to snapT(t, id))) }
-                                "trimOut" -> { setLens(Offset(c.position.x, 0f)); st.preview(jo("op" to "trimLayer", "layer" to id, "edge" to "out", "t" to snapT(t, id))) }
+                                "trimIn" -> { setLens(Offset(c.position.x, 0f)); st.preview(jo("op" to "trimLayer", "layer" to id, "edge" to "in", "t" to curSnap(t, id))) }
+                                "trimOut" -> { setLens(Offset(c.position.x, 0f)); st.preview(jo("op" to "trimLayer", "layer" to id, "edge" to "out", "t" to curSnap(t, id))) }
                                 "move" -> {
                                     val dt = dx / pxPerSec
-                                    val newIn = snapT(layer.optDouble("in") + dt, id)
+                                    val newIn = curSnap(layer.optDouble("in") + dt, id)
                                     val moving = if (st.selection.size > 1 && id in st.selection) st.selection.toList() else listOf(id)
                                     st.preview(jo("op" to "moveLayerTime", "layers" to moving, "dt" to (newIn - layer.optDouble("in"))))
                                 }
-                                else -> setScroll((scrollX - (c.position.x - c.previousPosition.x)).coerceAtLeast(0f))
+                                else -> setScroll((curScroll - (c.position.x - c.previousPosition.x)).coerceAtLeast(0f))
                             }
                             c.consume()
                         } while (true)
