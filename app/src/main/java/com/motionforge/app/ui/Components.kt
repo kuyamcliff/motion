@@ -28,6 +28,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -59,22 +60,86 @@ import com.motionforge.app.engine.resolve
 import org.json.JSONArray
 import org.json.JSONObject
 
-val Accent = Color(0xFFFF6A3D)
-val Panel = Color(0xFF17181C)
-val PanelHi = Color(0xFF22242A)
-val TextDim = Color(0xFF9A9CA4)
-val KeyColor = Color(0xFFFFC23D)
+// ---------------------------------------------------------------- design tokens (deep navy, electric blue accent)
+val Bg = Color(0xFF070B16)          // app background
+val Panel = Color(0xFF0F1424)       // surfaces: cards, panels, bars
+val PanelHi = Color(0xFF171E34)     // raised controls, inputs, chips
+val Stroke = Color(0xFF242D4A)      // hairlines and outlines
+val Accent = Color(0xFF3D6BFF)      // primary actions, selection, playhead
+val Accent2 = Color(0xFF7B61FF)     // secondary highlight (selected clips, gradients)
+val TextDim = Color(0xFF8B93B0)
+val KeyColor = Color(0xFFFFC23D)    // keyframes
+val Danger = Color(0xFFFF5A6E)
+val AccentGradient = androidx.compose.ui.graphics.Brush.linearGradient(listOf(Color(0xFF3D6BFF), Color(0xFF7B61FF)))
 
 @Composable
 fun MfTheme(content: @Composable () -> Unit) {
     val hc = Settings.highContrast
     MaterialTheme(
         colorScheme = darkColorScheme(
-            primary = Accent, secondary = Color(0xFF4FC3F7), background = if (hc) Color.Black else Color(0xFF101114),
-            surface = if (hc) Color.Black else Panel, onSurface = Color.White, onBackground = Color.White, surfaceVariant = PanelHi,
+            primary = Accent, onPrimary = Color.White, secondary = Accent2, tertiary = KeyColor,
+            background = if (hc) Color.Black else Bg, surface = if (hc) Color.Black else Panel, surfaceVariant = PanelHi,
+            surfaceContainer = Panel, surfaceContainerHigh = PanelHi, surfaceContainerHighest = PanelHi,
+            onSurface = Color.White, onBackground = Color.White, onSurfaceVariant = TextDim, outline = Stroke, outlineVariant = Stroke, error = Danger,
+        ),
+        shapes = androidx.compose.material3.Shapes(
+            extraSmall = RoundedCornerShape(6.dp), small = RoundedCornerShape(10.dp), medium = RoundedCornerShape(14.dp),
+            large = RoundedCornerShape(18.dp), extraLarge = RoundedCornerShape(24.dp),
         ),
         content = content,
     )
+}
+
+/** Rounded surface card used across screens. */
+@Composable
+fun Card(modifier: Modifier = Modifier, padding: androidx.compose.ui.unit.Dp = 12.dp, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    androidx.compose.foundation.layout.Column(
+        modifier.background(Panel, RoundedCornerShape(16.dp)).border(1.dp, Stroke, RoundedCornerShape(16.dp)).padding(padding),
+        content = content,
+    )
+}
+
+/** Square icon tile (insert panels, libraries). */
+@Composable
+fun Tile(icon: ImageVector, label: String, tint: Color = Accent, onClick: () -> Unit) {
+    androidx.compose.foundation.layout.Column(
+        Modifier.padding(4.dp).size(width = 84.dp, height = 78.dp).clip(RoundedCornerShape(14.dp)).background(PanelHi)
+            .border(1.dp, Stroke, RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(6.dp)
+            .semantics(mergeDescendants = true) { contentDescription = label },
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+    ) {
+        Icon(icon, null, tint = tint, modifier = Modifier.size(26.dp))
+        Spacer(Modifier.height(6.dp))
+        Text(label, fontSize = 11.sp, color = Color.White, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+    }
+}
+
+/** Primary pill button (accent gradient). */
+@Composable
+fun PrimaryButton(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null, onClick: () -> Unit) {
+    Row(
+        modifier.sizeIn(minHeight = 44.dp).background(AccentGradient, RoundedCornerShape(22.dp)).clickable(onClick = onClick).padding(horizontal = 18.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+    ) {
+        if (icon != null) { Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)) }
+        Text(text, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1)
+    }
+}
+
+/** Icon over a short label: bottom tool bars and navigation (min 56 dp wide, 48 dp tall). */
+@Composable
+fun ToolButton(icon: ImageVector, label: String, selected: Boolean = false, modifier: Modifier = Modifier, description: String = label, onClick: () -> Unit) {
+    androidx.compose.foundation.layout.Column(
+        modifier.sizeIn(minWidth = 60.dp, minHeight = 52.dp).clip(RoundedCornerShape(12.dp))
+            .background(if (selected) Accent.copy(alpha = 0.18f) else Color.Transparent)
+            .clickable(onClick = onClick).padding(horizontal = 6.dp, vertical = 5.dp)
+            .semantics(mergeDescendants = true) { contentDescription = description; stateDescription = if (selected) "selected" else "" },
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+    ) {
+        Icon(icon, null, tint = if (selected) Accent else Color.White, modifier = Modifier.size(22.dp))
+        Text(label, fontSize = 11.sp, color = if (selected) Accent else TextDim, maxLines = 1, softWrap = false,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+    }
 }
 
 /** Icon button with mandatory accessibility label and a 48dp minimum touch target. */
@@ -121,14 +186,15 @@ fun Chip(text: String, selected: Boolean = false, modifier: Modifier = Modifier,
     Box(
         modifier
             .padding(3.dp)
-            .background(if (selected) Accent.copy(alpha = 0.25f) else PanelHi, RoundedCornerShape(16.dp))
-            .border(1.dp, if (selected) Accent else Color.Transparent, RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (selected) Accent else PanelHi)
+            .border(1.dp, if (selected) Accent else Stroke, RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
             .sizeIn(minHeight = 40.dp)
-            .padding(horizontal = 12.dp, vertical = 9.dp)
+            .padding(horizontal = 14.dp, vertical = 9.dp)
             .semantics { stateDescription = if (selected) "selected" else "not selected" },
         contentAlignment = Alignment.Center,
-    ) { Text(text, fontSize = 13.sp, color = Color.White) }
+    ) { Text(text, fontSize = 13.sp, color = Color.White, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1) }
 }
 
 @Composable

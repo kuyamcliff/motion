@@ -1,5 +1,14 @@
 package com.motionforge.app.ui
 
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -108,41 +117,40 @@ fun HomeScreen(app: AppState) {
     val openPkg = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) importPackage(uri) }
     LaunchedEffect(app.pendingImport) { app.pendingImport?.let { importPackage(it); app.pendingImport = null } }
 
-    Column(Modifier.fillMaxSize().padding(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("MOTIONFORGE", fontWeight = FontWeight.Black, fontSize = 22.sp, color = Accent, modifier = Modifier.weight(1f))
+    Column(Modifier.fillMaxSize().background(Bg)) {
+        // Header: brand, docs and fonts shortcuts.
+        Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            LogoMark(34.dp)
+            Column(Modifier.weight(1f).padding(start = 10.dp)) {
+                Text("MOTIONFORGE", fontWeight = FontWeight.Black, fontSize = 18.sp, color = Color.White, maxLines = 1)
+                Text("Edit. Create. Share.", fontSize = 11.sp, color = TextDim, maxLines = 1)
+            }
             IconBtn(Icons.Filled.FontDownload, "Fonts") { app.go(Screen.Fonts) }
-            IconBtn(Icons.Filled.LibraryBooks, "Presets and capsules library") { app.go(Screen.Library) }
-            IconBtn(Icons.Filled.Extension, "Extensions") { app.go(Screen.Extensions) }
             IconBtn(Icons.Filled.MenuBook, "Documentation and developer center") { app.go(Screen.DevCenter) }
-            IconBtn(Icons.Filled.Settings, "Settings") { app.go(Screen.Settings) }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = { showNew = true }, modifier = Modifier.semantics { contentDescription = "New Project" }) { Text("New Project") }
-            TextButton(onClick = { openPkg.launch(arrayOf("*/*")) }) { Text("Import Package") }
-            TextButton(onClick = {
+        // Search + filters.
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp).background(PanelHi, RoundedCornerShape(14.dp)).border(1.dp, Stroke, RoundedCornerShape(14.dp)),
+            verticalAlignment = Alignment.CenterVertically) {
+            androidx.compose.material3.Icon(Icons.Filled.Search, null, tint = TextDim, modifier = Modifier.padding(start = 12.dp))
+            androidx.compose.foundation.text.BasicTextField(query, { query = it }, singleLine = true,
+                textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 15.sp),
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(Accent),
+                modifier = Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 13.dp).semantics { contentDescription = "Search projects" },
+                decorationBox = { inner -> Box { if (query.isEmpty()) Text("Search projects", color = TextDim, fontSize = 15.sp); inner() } })
+        }
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            listOf("recent" to "Recent", "name" to "Name", "size" to "Size").forEach { (k, n) -> Chip(n, sort == k) { sort = k } }
+            Chip("Import Package") { openPkg.launch(arrayOf("*/*")) }
+            Chip("Sample Project") {
                 val id = createSampleProject(ctx)
                 if (id == null) app.toast("Could not create the sample project.", true) else { refresh++; app.openProject(id) }
-            }) { Text("Sample Project") }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(query, { query = it }, placeholder = { Text("Search projects") }, singleLine = true, modifier = Modifier.weight(1f))
-            var sortOpen by remember { mutableStateOf(false) }
-            Box {
-                IconBtn(Icons.Filled.Sort, "Sort projects") { sortOpen = true }
-                DropdownMenu(sortOpen, { sortOpen = false }) {
-                    listOf("recent" to "Last edited", "name" to "Name", "size" to "Storage size").forEach { (k, n) ->
-                        DropdownMenuItem(text = { Text(n) }, onClick = { sort = k; sortOpen = false })
-                    }
-                }
             }
         }
-        Gap()
-        if (shown.isEmpty()) {
-            Text(if (projects.isEmpty()) "No projects yet. Create a new project or open the sample project — everything works offline." else "No projects match \"$query\".",
-                color = TextDim, modifier = Modifier.padding(24.dp))
-        }
-        LazyVerticalGrid(GridCells.Adaptive(170.dp), modifier = Modifier.weight(1f)) {
+        Text(if (shown.isEmpty() && projects.isNotEmpty()) "No projects match \"$query\"." else "Projects", fontWeight = FontWeight.SemiBold, fontSize = 15.sp,
+            color = if (shown.isEmpty() && projects.isNotEmpty()) TextDim else Color.White, modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 2.dp))
+        LazyVerticalGrid(GridCells.Adaptive(156.dp), modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 12.dp)) {
+            item(key = "__new") { NewProjectTile { showNew = true } }
             items(shown, key = { it.optString("id") }) { p ->
                 ProjectCard(p, onClick = {
                     if (p.optBoolean("needsRecovery")) recoverFor = p
@@ -150,6 +158,9 @@ fun HomeScreen(app: AppState) {
                 }, onLong = { menuFor = p })
             }
         }
+        if (projects.isEmpty()) Text("No projects yet. Tap New Project or try the sample — everything works offline.", color = TextDim, fontSize = 13.sp,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
+        HomeBottomBar(app, onNew = { showNew = true })
     }
     if (showNew) NewProjectDialog(onDismiss = { showNew = false }) { name, w, h, fps, dur ->
         val r = NativeBridge.call("createProject", jo("name" to name, "width" to w, "height" to h, "fps" to fps, "duration" to dur))
@@ -182,20 +193,74 @@ fun ProjectCard(p: JSONObject, onClick: () -> Unit, onLong: () -> Unit) {
     val thumb = remember(p.optString("thumbnail"), p.optDouble("modified")) {
         p.optString("thumbnail").takeIf { it.isNotEmpty() && File(it).exists() }?.let { BitmapFactory.decodeFile(it)?.asImageBitmap() }
     }
-    Column(Modifier.padding(6.dp).background(Panel, RoundedCornerShape(10.dp)).combinedClickable(onClick = onClick, onLongClick = onLong)
+    Column(Modifier.padding(6.dp).clip(RoundedCornerShape(16.dp)).background(Panel).border(1.dp, Stroke, RoundedCornerShape(16.dp))
+        .combinedClickable(onClick = onClick, onLongClick = onLong)
         .semantics { contentDescription = "Project ${p.optString("name")}" }) {
-        Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(Color.Black, RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp))) {
-            if (thumb != null) Image(thumb, null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
-            if (p.optBoolean("needsRecovery")) Row(Modifier.align(Alignment.TopStart).background(Color(0xCC8A5A00)).padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                androidx.compose.material3.Icon(Icons.Filled.Warning, "Recovery available", tint = Color.White)
-                Text(" Recovery", fontSize = 11.sp)
+        Box(Modifier.fillMaxWidth().aspectRatio(16f / 10f).background(Color.Black)) {
+            if (thumb != null) Image(thumb, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            else androidx.compose.material3.Icon(Icons.Filled.Movie, null, tint = Stroke, modifier = Modifier.align(Alignment.Center).size(40.dp))
+            Text(durationText(p.optDouble("duration")), fontSize = 10.sp, color = Color.White,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp).background(Color(0xAA000000), RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 2.dp))
+            if (p.optBoolean("needsRecovery")) Row(Modifier.align(Alignment.TopStart).padding(6.dp).background(Color(0xCC8A5A00), RoundedCornerShape(6.dp)).padding(4.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.material3.Icon(Icons.Filled.Warning, "Recovery available", tint = Color.White, modifier = Modifier.size(14.dp))
+                Text(" Recovery", fontSize = 10.sp)
             }
         }
-        Column(Modifier.padding(8.dp)) {
-            Text(p.optString("name"), fontWeight = FontWeight.SemiBold, maxLines = 1)
-            SmallLabel("%dx%d · %s fps · %s".format(p.optInt("width"), p.optInt("height"), fmt(p.optDouble("fps")), durationText(p.optDouble("duration"))))
-            SmallLabel(DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date((p.optDouble("modified") * 1000).toLong())) + " · " + bytesText(p.optLong("bytes")))
+        Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+            Text(p.optString("name"), fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            Text("%d×%d · %s".format(p.optInt("width"), p.optInt("height"), bytesText(p.optLong("bytes"))), fontSize = 11.sp, color = TextDim, maxLines = 1)
+            Text(ago(p.optDouble("modified")), fontSize = 11.sp, color = TextDim, maxLines = 1)
         }
+    }
+}
+
+@Composable
+fun NewProjectTile(onClick: () -> Unit) {
+    Column(Modifier.padding(6.dp).clip(RoundedCornerShape(16.dp)).background(Accent.copy(alpha = 0.10f))
+        .border(1.dp, Accent.copy(alpha = 0.6f), RoundedCornerShape(16.dp)).clickable(onClick = onClick)
+        .semantics(mergeDescendants = true) { contentDescription = "New Project" }
+        .aspectRatio(0.92f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        Box(Modifier.size(52.dp).background(AccentGradient, androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) {
+            androidx.compose.material3.Icon(Icons.Filled.Add, null, tint = Color.White, modifier = Modifier.size(28.dp))
+        }
+        Gap(10)
+        Text("New Project", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        Text("Presets or custom size", fontSize = 11.sp, color = TextDim)
+    }
+}
+
+/** Brand mark: the "M" monogram on the accent gradient. */
+@Composable
+fun LogoMark(size: androidx.compose.ui.unit.Dp) {
+    Box(Modifier.size(size).background(AccentGradient, RoundedCornerShape(size / 4)), contentAlignment = Alignment.Center) {
+        Text("M", fontWeight = FontWeight.Black, color = Color.White, fontSize = (size.value * 0.55f).sp)
+    }
+}
+
+@Composable
+fun HomeBottomBar(app: AppState, onNew: () -> Unit) {
+    Row(Modifier.fillMaxWidth().background(Panel).border(1.dp, Stroke, RoundedCornerShape(0.dp)).navigationBarsPadding().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+        ToolButton(Icons.Filled.Home, "Home", selected = true) { }
+        ToolButton(Icons.Filled.LibraryBooks, "Library", description = "Presets and capsules library") { app.go(Screen.Library) }
+        Box(Modifier.size(52.dp).background(AccentGradient, androidx.compose.foundation.shape.CircleShape).clickable(onClick = onNew)
+            .semantics { contentDescription = "Create a new project" }, contentAlignment = Alignment.Center) {
+            androidx.compose.material3.Icon(Icons.Filled.Add, null, tint = Color.White, modifier = Modifier.size(28.dp))
+        }
+        ToolButton(Icons.Filled.Extension, "Extensions") { app.go(Screen.Extensions) }
+        ToolButton(Icons.Filled.Settings, "Settings") { app.go(Screen.Settings) }
+    }
+}
+
+fun ago(epochSec: Double): String {
+    val d = System.currentTimeMillis() / 1000.0 - epochSec
+    return when {
+        d < 60 -> "just now"
+        d < 3600 -> "${(d / 60).toInt()} min ago"
+        d < 86400 -> "${(d / 3600).toInt()} h ago"
+        d < 86400 * 7 -> "${(d / 86400).toInt()} d ago"
+        else -> DateFormat.getDateInstance(DateFormat.SHORT).format(Date((epochSec * 1000).toLong()))
     }
 }
 

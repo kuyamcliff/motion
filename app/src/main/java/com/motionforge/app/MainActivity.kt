@@ -7,6 +7,8 @@ import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -118,6 +120,11 @@ class MainActivity : ComponentActivity() {
             if (e == Lifecycle.Event.ON_STOP && app.editor.projectId.isNotEmpty()) { app.player?.pause(); app.editor.save() }
         })
         if (!Settings.firstRunDone) app.stack[0] = Screen.FirstRun
+        // Draw behind the system bars (default on Android 15) with matching dark bars; insets are applied at the root.
+        enableEdgeToEdge(
+            statusBarStyle = androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+        )
         setContent {
             val scale = Settings.uiScale
             val d = LocalDensity.current
@@ -153,7 +160,7 @@ fun Root(app: AppState) {
     BackHandler(enabled = app.stack.size > 1 || app.paletteOpen) {
         if (app.paletteOpen) app.paletteOpen = false else app.back()
     }
-    Box(Modifier.fillMaxSize().background(Color(0xFF101114))) {
+    Box(Modifier.fillMaxSize().background(com.motionforge.app.ui.Bg).safeDrawingPadding()) {
         when (app.current) {
             Screen.Home -> HomeScreen(app)
             Screen.FirstRun -> FirstRunScreen(app)

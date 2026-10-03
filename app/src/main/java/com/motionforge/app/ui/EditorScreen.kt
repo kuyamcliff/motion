@@ -1,5 +1,35 @@
 package com.motionforge.app.ui
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.material.icons.filled.Deselect
+import androidx.compose.material.icons.filled.PauseCircle
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Waves
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Grain
+import androidx.compose.material.icons.filled.ViewInAr
+import androidx.compose.material.icons.filled.GpsFixed
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Masks
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.FormatAlignLeft
+import androidx.compose.material.icons.filled.ContentCut
+import androidx.compose.material.icons.filled.Gesture
+import androidx.compose.material.icons.filled.ClosedCaption
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.VideoLibrary
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -108,12 +138,25 @@ fun EditorScreen(app: AppState) {
     // Periodic autosave tick (engine decides based on interval + dirty state).
     LaunchedEffect(st.projectId) { while (true) { delay(5000); if (!player.playing) st.autosave() } }
 
-    BoxWithConstraints(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(Bg)) {
         val wide = maxWidth > 700.dp
         val fullHeight = maxHeight
         Column(Modifier.fillMaxSize()) {
             EditorTopBar(app, ui)
-            if (wide) {
+            if (wide && maxHeight < 520.dp) {
+                // Landscape phone: preview + transport on the left; timeline (or the open panel) and tools on the right.
+                Row(Modifier.weight(1f)) {
+                    Column(Modifier.weight(0.56f).fillMaxHeight()) {
+                        PreviewPane(app, ui, Modifier.weight(1f).fillMaxWidth())
+                        Transport(st, player, ui)
+                    }
+                    Column(Modifier.weight(0.44f).fillMaxHeight().background(Panel)) {
+                        if (ui.tab != InspectorTab.None) Column(Modifier.weight(1f).fillMaxWidth()) { InspectorPanel(app, ui) }
+                        else Timeline(app, ui, Modifier.weight(1f).fillMaxWidth())
+                        ContextToolbar(app, ui)
+                    }
+                }
+            } else if (wide) {
                 Row(Modifier.weight(1f)) {
                     Column(Modifier.weight(1f)) {
                         PreviewPane(app, ui, Modifier.weight(1f).fillMaxWidth())
@@ -153,7 +196,7 @@ fun EditorTopBar(app: AppState, ui: EditorUi) {
     // On phone widths seven 48 dp buttons would leave the title a few dp; secondary actions move into the menu there.
     BoxWithConstraints(Modifier.fillMaxWidth()) {
     val compact = maxWidth < 480.dp
-    Row(Modifier.fillMaxWidth().background(Color(0xFF0C0D10)).padding(horizontal = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().background(Panel).statusBarsPadding().padding(horizontal = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         IconBtn(Icons.AutoMirrored.Filled.ArrowBack, "Back to projects") { app.back() }
         Column(Modifier.weight(1f).combinedClickable(onClick = { renameProject = true })) {
             Text(st.doc.optJSONObject("meta")?.optString("name") ?: "", fontWeight = FontWeight.SemiBold, maxLines = 1, fontSize = 14.sp,
@@ -178,7 +221,12 @@ fun EditorTopBar(app: AppState, ui: EditorUi) {
             IconBtn(Icons.Filled.Search, "Command palette") { app.paletteOpen = true }
             IconBtn(Icons.Filled.Tune, "Composition settings") { ui.tab = InspectorTab.Comp }
         }
-        IconBtn(Icons.Filled.FileUpload, "Export") { app.player?.pause(); app.go(Screen.Export) }
+        Row(Modifier.padding(horizontal = 4.dp).sizeIn(minHeight = 36.dp).background(AccentGradient, RoundedCornerShape(18.dp))
+            .clickable { app.player?.pause(); app.go(Screen.Export) }.semantics(mergeDescendants = true) { contentDescription = "Export" }
+            .padding(horizontal = 12.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.FileUpload, null, tint = Color.White, modifier = Modifier.size(16.dp))
+            if (!compact || maxWidth >= 360.dp) Text(" Export", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        }
         Box {
             IconBtn(Icons.Filled.MoreVert, "More") { more = true }
             DropdownMenu(more, { more = false }) {
@@ -219,29 +267,37 @@ fun Transport(st: EditorState, player: Player, ui: EditorUi) {
         val target = if (forward) times.firstOrNull { it > t + 1e-6 } else times.lastOrNull { it < t - 1e-6 }
         if (target != null) player.seek(target)
     }
-    Row(Modifier.fillMaxWidth().background(Color(0xFF0C0D10)).horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
-        IconBtn(Icons.Filled.FirstPage, "Jump to beginning") { player.seek(0.0) }
-        IconBtn(Icons.Filled.SkipPrevious, "Previous edit point") {
-            jumpTo(NativeBridge.call("editPoints").optJSONArray("times")?.let { a -> (0 until a.length()).map { a.getDouble(it) } } ?: emptyList(), false)
+    var moreOpen by remember { mutableStateOf(false) }
+    fun editPoints() = NativeBridge.call("editPoints").optJSONArray("times")?.let { a -> (0 until a.length()).map { a.getDouble(it) } } ?: emptyList()
+    // Timecode left, the core transport centred, loop + extras right. Fits a 320 dp phone without scrolling.
+    Row(Modifier.fillMaxWidth().background(Panel).padding(horizontal = 6.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(st.timecode(st.playhead), fontFamily = FontFamily.Monospace, fontSize = 12.sp, maxLines = 1, softWrap = false)
+            Text("${if (player.playing) "%.0f fps".format(player.fpsActual) else "%.0f ms".format(player.renderMs)} · ${player.quality}${if (player.gpuWindow) " · GPU" else ""}",
+                fontSize = 10.sp, color = TextDim, maxLines = 1, softWrap = false)
         }
         IconBtn(Icons.Filled.Diamond, "Previous keyframe", tint = KeyColor) { jumpTo(st.keyframeTimes(st.selectedLayer), false) }
         RepeatButton(Icons.Filled.NavigateBefore, "Previous frame") { player.stepFrames(-1) }
         PlayButton(player)
         RepeatButton(Icons.Filled.NavigateNext, "Next frame") { player.stepFrames(1) }
         IconBtn(Icons.Filled.Diamond, "Next keyframe", tint = KeyColor) { jumpTo(st.keyframeTimes(st.selectedLayer), true) }
-        IconBtn(Icons.Filled.SkipNext, "Next edit point") {
-            jumpTo(NativeBridge.call("editPoints").optJSONArray("times")?.let { a -> (0 until a.length()).map { a.getDouble(it) } } ?: emptyList(), true)
-        }
-        IconBtn(Icons.Filled.LastPage, "Jump to end") { player.seek(st.duration) }
-        IconBtn(Icons.Filled.Stop, "Stop and reset") { player.stop() }
-        IconBtn(Icons.Filled.Repeat, if (player.loop) "Loop on" else "Loop off", tint = if (player.loop) Accent else TextDim) { player.loop = !player.loop }
-        TextButton(onClick = { player.rangeIn = st.playhead }) { Text("In", color = if (player.rangeIn >= 0) Accent else Color.White) }
-        TextButton(onClick = { player.rangeOut = st.playhead }) { Text("Out", color = if (player.rangeOut > 0) Accent else Color.White) }
-        if (player.rangeIn >= 0 || player.rangeOut > 0) TextButton(onClick = { player.rangeIn = -1.0; player.rangeOut = -1.0 }) { Text("Clear range") }
-        Column(Modifier.padding(horizontal = 8.dp)) {
-            Text(st.timecode(st.playhead), fontFamily = FontFamily.Monospace, fontSize = 13.sp)
-            Text("F ${st.frame(st.playhead)} · ${if (player.playing) "%.0f fps".format(player.fpsActual) else "%.0f ms".format(player.renderMs)} · ${player.quality}",
-                fontSize = 10.sp, color = TextDim)
+        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+            IconBtn(Icons.Filled.Repeat, if (player.loop) "Loop on" else "Loop off", tint = if (player.loop) Accent else TextDim) { player.loop = !player.loop }
+            Box {
+                IconBtn(Icons.Filled.MoreHoriz, "Transport options") { moreOpen = true }
+                DropdownMenu(moreOpen, { moreOpen = false }) {
+                    listOf(
+                        "Jump to beginning" to { player.seek(0.0) },
+                        "Jump to end" to { player.seek(st.duration) },
+                        "Previous edit point" to { jumpTo(editPoints(), false) },
+                        "Next edit point" to { jumpTo(editPoints(), true) },
+                        "Stop and reset" to { player.stop() },
+                        "Set range in" to { player.rangeIn = st.playhead },
+                        "Set range out" to { player.rangeOut = st.playhead },
+                        "Clear range" to { player.rangeIn = -1.0; player.rangeOut = -1.0 },
+                    ).forEach { (t, f) -> DropdownMenuItem(text = { Text(t) }, onClick = { moreOpen = false; f() }) }
+                }
+            }
         }
     }
 }
@@ -275,7 +331,9 @@ fun PlayButton(player: Player) {
                 heldMode = false
             })
         }, contentAlignment = Alignment.Center) {
-        Icon(if (player.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, null, tint = Accent, modifier = Modifier.size(34.dp))
+        Box(Modifier.size(46.dp).background(AccentGradient, androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) {
+            Icon(if (player.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, null, tint = Color.White, modifier = Modifier.size(28.dp))
+        }
     }
 }
 private var heldMode = false
@@ -288,43 +346,47 @@ fun ContextToolbar(app: AppState, ui: EditorUi) {
     val importMedia = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris: List<Uri> ->
         uris.forEach { importIntoProject(app, ctx, it) }
     }
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    // Bottom tool bar (thumb reach): icon + label buttons, scrollable on narrow screens.
+    @Composable fun T(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, selected: Boolean = false, onClick: () -> Unit) =
+        ToolButton(icon, label, selected, onClick = onClick)
+    Row(Modifier.fillMaxWidth().background(Panel).navigationBarsPadding().horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically) {
         if (sel == null) {
-            Chip("+ Media") { importMedia.launch(arrayOf("video/*", "audio/*", "image/*", "*/*")) }
-            Chip("+ Layer") { ui.tab = InspectorTab.Add }
-            Chip("Text") { st.addLayer("text", jo("text" to "Title")); ui.tab = InspectorTab.Text }
-            Chip("Shape") { st.addLayer("shape", jo("shape" to "rect")); ui.tab = InspectorTab.Shape }
-            Chip("Captions") { app.player?.pause(); app.go(Screen.Captions) }
-            Chip("Draw") { ui.previewMode = if (ui.previewMode == "draw") "select" else "draw" }
-            Chip("Split all") { st.op("split", "t" to st.playhead) }
-            Chip("Delete gap") { st.op("deleteGap", "t" to st.playhead) }
-            Chip("Marker") { st.op("addMarker", "t" to st.playhead, "title" to "Marker") }
+            T(Icons.Filled.VideoLibrary, "+ Media") { importMedia.launch(arrayOf("video/*", "audio/*", "image/*", "*/*")) }
+            T(Icons.Filled.Layers, "+ Layer", ui.tab == InspectorTab.Add) { ui.tab = InspectorTab.Add }
+            T(Icons.Filled.TextFields, "Text") { st.addLayer("text", jo("text" to "Title")); ui.tab = InspectorTab.Text }
+            T(Icons.Filled.Category, "Shape") { st.addLayer("shape", jo("shape" to "rect")); ui.tab = InspectorTab.Shape }
+            T(Icons.Filled.ClosedCaption, "Captions") { app.player?.pause(); app.go(Screen.Captions) }
+            T(Icons.Filled.Gesture, "Draw", ui.previewMode == "draw") { ui.previewMode = if (ui.previewMode == "draw") "select" else "draw" }
+            T(Icons.Filled.ContentCut, "Split all") { st.op("split", "t" to st.playhead) }
+            T(Icons.Filled.FormatAlignLeft, "Delete gap") { st.op("deleteGap", "t" to st.playhead) }
+            T(Icons.Filled.Bookmark, "Marker") { st.op("addMarker", "t" to st.playhead, "title" to "Marker") }
         } else {
             val id = sel.optString("id")
             val type = sel.optString("type")
-            Chip("Inspector", ui.tab == InspectorTab.Layer) { ui.tab = InspectorTab.Layer }
-            Chip("Split") { st.op("split", "layers" to listOf(id), "t" to st.playhead) }
-            Chip("Duplicate") { st.op("duplicateLayers", "layers" to listOf(id)) }
-            Chip("Delete") { st.op("removeLayers", "layers" to listOf(id)); st.selection = emptySet() }
-            Chip("Ripple delete") { st.op("rippleDelete", "layer" to id); st.selection = emptySet() }
-            Chip("Effects", ui.tab == InspectorTab.Effects) { ui.tab = InspectorTab.Effects }
-            Chip("Keyframes", ui.tab == InspectorTab.Keyframes) { ui.tab = InspectorTab.Keyframes }
-            Chip("Masks", ui.tab == InspectorTab.Masks) { ui.tab = InspectorTab.Masks }
-            if (type == "text") Chip("Text", ui.tab == InspectorTab.Text) { ui.tab = InspectorTab.Text }
-            if (type == "shape") Chip("Shape", ui.tab == InspectorTab.Shape) { ui.tab = InspectorTab.Shape }
-            if (sel.has("audio")) Chip("Audio", ui.tab == InspectorTab.Audio) { ui.tab = InspectorTab.Audio }
-            if (type == "video" || type == "audio" || type == "precomp" || type == "image") Chip("Speed", ui.tab == InspectorTab.Time) { ui.tab = InspectorTab.Time }
-            if (type == "video") Chip("Track", ui.tab == InspectorTab.Tracking) { ui.tab = InspectorTab.Tracking }
-            if (type == "model3d" || type == "camera" || type == "light" || sel.optBoolean("threeD")) Chip("3D", ui.tab == InspectorTab.ThreeD) { ui.tab = InspectorTab.ThreeD }
-            if (type == "particles") Chip("Particles", ui.tab == InspectorTab.Particles) { ui.tab = InspectorTab.Particles }
-            if (type == "captions") Chip("Captions") { app.go(Screen.Captions) }
-            Chip("Transitions", ui.tab == InspectorTab.Transitions) { ui.tab = InspectorTab.Transitions }
-            Chip("Behaviors", ui.tab == InspectorTab.Behaviors) { ui.tab = InspectorTab.Behaviors }
-            Chip("Precompose") { st.op("precompose", "layers" to st.selection.toList())?.let { st.selection = setOf(it.optString("layer")) } }
-            Chip("Freeze frame") { st.op("freezeFrame", "layer" to id, "t" to st.playhead, "duration" to 2.0) }
-            Chip("Deselect") { st.selection = emptySet(); ui.tab = InspectorTab.None }
+            T(Icons.Filled.Tune, "Inspector", ui.tab == InspectorTab.Layer) { ui.tab = InspectorTab.Layer }
+            T(Icons.Filled.ContentCut, "Split") { st.op("split", "layers" to listOf(id), "t" to st.playhead) }
+            T(Icons.Filled.ContentCopy, "Duplicate") { st.op("duplicateLayers", "layers" to listOf(id)) }
+            T(Icons.Filled.Delete, "Delete") { st.op("removeLayers", "layers" to listOf(id)); st.selection = emptySet() }
+            T(Icons.Filled.DeleteSweep, "Ripple delete") { st.op("rippleDelete", "layer" to id); st.selection = emptySet() }
+            T(Icons.Filled.AutoAwesome, "Effects", ui.tab == InspectorTab.Effects) { ui.tab = InspectorTab.Effects }
+            T(Icons.Filled.Diamond, "Keyframes", ui.tab == InspectorTab.Keyframes) { ui.tab = InspectorTab.Keyframes }
+            T(Icons.Filled.Masks, "Masks", ui.tab == InspectorTab.Masks) { ui.tab = InspectorTab.Masks }
+            if (type == "text") T(Icons.Filled.TextFields, "Text", ui.tab == InspectorTab.Text) { ui.tab = InspectorTab.Text }
+            if (type == "shape") T(Icons.Filled.Category, "Shape", ui.tab == InspectorTab.Shape) { ui.tab = InspectorTab.Shape }
+            if (sel.has("audio")) T(Icons.Filled.GraphicEq, "Audio", ui.tab == InspectorTab.Audio) { ui.tab = InspectorTab.Audio }
+            if (type == "video" || type == "audio" || type == "precomp" || type == "image") T(Icons.Filled.Speed, "Speed", ui.tab == InspectorTab.Time) { ui.tab = InspectorTab.Time }
+            if (type == "video") T(Icons.Filled.GpsFixed, "Track", ui.tab == InspectorTab.Tracking) { ui.tab = InspectorTab.Tracking }
+            if (type == "model3d" || type == "camera" || type == "light" || sel.optBoolean("threeD")) T(Icons.Filled.ViewInAr, "3D", ui.tab == InspectorTab.ThreeD) { ui.tab = InspectorTab.ThreeD }
+            if (type == "particles") T(Icons.Filled.Grain, "Particles", ui.tab == InspectorTab.Particles) { ui.tab = InspectorTab.Particles }
+            if (type == "captions") T(Icons.Filled.ClosedCaption, "Captions") { app.go(Screen.Captions) }
+            T(Icons.Filled.SwapHoriz, "Transitions", ui.tab == InspectorTab.Transitions) { ui.tab = InspectorTab.Transitions }
+            T(Icons.Filled.Waves, "Behaviors", ui.tab == InspectorTab.Behaviors) { ui.tab = InspectorTab.Behaviors }
+            T(Icons.Filled.Inventory2, "Precompose") { st.op("precompose", "layers" to st.selection.toList())?.let { st.selection = setOf(it.optString("layer")) } }
+            T(Icons.Filled.PauseCircle, "Freeze frame") { st.op("freezeFrame", "layer" to id, "t" to st.playhead, "duration" to 2.0) }
+            T(Icons.Filled.Deselect, "Deselect") { st.selection = emptySet(); ui.tab = InspectorTab.None }
         }
-        if (ui.tab != InspectorTab.None) Chip("Close panel") { ui.tab = InspectorTab.None }
+        if (ui.tab != InspectorTab.None) T(Icons.Filled.Close, "Close panel") { ui.tab = InspectorTab.None }
     }
 }
 

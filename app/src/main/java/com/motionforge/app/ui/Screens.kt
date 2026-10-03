@@ -1,5 +1,7 @@
 package com.motionforge.app.ui
 
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.statusBarsPadding
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -81,13 +83,16 @@ import java.io.File
 /** Standard full-screen page: back button, title, scrollable content. */
 @Composable
 fun ScreenScaffold(app: AppState, title: String, actions: @Composable () -> Unit = {}, scroll: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().background(Panel).padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
+    Column(Modifier.fillMaxSize().background(Bg)) {
+        Row(Modifier.fillMaxWidth().background(Panel).statusBarsPadding().padding(horizontal = 4.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
             IconBtn(Icons.AutoMirrored.Filled.ArrowBack, "Back") { app.back() }
-            Text(title, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.weight(1f))
+            Text(title, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f))
             actions()
         }
-        val m = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 6.dp)
+        androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().height(1.dp).background(Stroke))
+        // Content column, width-capped on tablets so forms stay readable.
+        val m = Modifier.fillMaxSize().widthIn(max = 760.dp).padding(horizontal = 16.dp, vertical = 8.dp)
         Column(if (scroll) m.verticalScroll(rememberScrollState()) else m, content = content)
     }
 }

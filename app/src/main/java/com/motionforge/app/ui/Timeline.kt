@@ -67,10 +67,10 @@ import org.json.JSONObject
 import kotlin.math.roundToInt
 
 private val typeColors = mapOf(
-    "video" to Color(0xFF3E6FB0), "image" to Color(0xFF5B8C5A), "audio" to Color(0xFF2E8B78), "text" to Color(0xFFB0563E),
-    "shape" to Color(0xFFB08A3E), "solid" to Color(0xFF7A5BB0), "adjustment" to Color(0xFF8A8A8A), "null" to Color(0xFF555555),
-    "camera" to Color(0xFF4A4A6A), "light" to Color(0xFF8A7A3A), "particles" to Color(0xFFB03E8A), "model3d" to Color(0xFF3EA0B0),
-    "captions" to Color(0xFF6A6A3E), "precomp" to Color(0xFF9A6A3A),
+    "video" to Color(0xFF2F5BEA), "image" to Color(0xFF138A8A), "audio" to Color(0xFF14917A), "text" to Color(0xFF7B61FF),
+    "shape" to Color(0xFFD9772B), "solid" to Color(0xFF5257D6), "adjustment" to Color(0xFF59607A), "null" to Color(0xFF3A4060),
+    "camera" to Color(0xFF3A4570), "light" to Color(0xFFB59A2E), "particles" to Color(0xFFC0398F), "model3d" to Color(0xFF1E9BC0),
+    "captions" to Color(0xFF8A6D2E), "precomp" to Color(0xFFA05A3A),
 )
 
 @Composable
@@ -80,7 +80,7 @@ fun Timeline(app: AppState, ui: EditorUi, modifier: Modifier) {
     val view = LocalView.current
     var scrollX by remember { mutableFloatStateOf(0f) }
     var lens by remember { mutableStateOf<Offset?>(null) }  // precision lens anchor (track area coords)
-    val headerW = 150.dp
+    val headerW = if (androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp < 420) 116.dp else 150.dp
     val rowH = if (ui.expandedTracks) 64.dp else 52.dp
     val pxPerSec = ui.timelineZoom
     fun tToX(t: Double) = (t * pxPerSec - scrollX).toFloat()
@@ -101,7 +101,7 @@ fun Timeline(app: AppState, ui: EditorUi, modifier: Modifier) {
         return st.snap(t)
     }
 
-    Column(modifier.background(Color(0xFF131418))) {
+    Column(modifier.background(Bg)) {
         // Ruler.
         Row(Modifier.height(26.dp)) {
             Box(Modifier.width(headerW).fillMaxSize(), contentAlignment = Alignment.CenterStart) {
@@ -210,7 +210,7 @@ private fun LayerRow(app: AppState, ui: EditorUi, layer: JSONObject, rowH: andro
     val peaks = remember(layer.optString("asset")) {
         if (type == "audio" || (type == "video" && layer.has("audio"))) NativeBridge.call("peaks", jo("asset" to layer.optString("asset"), "buckets" to 400)).optJSONArray("peaks") else null
     }
-    Row(Modifier.height(rowH).fillMaxWidth().background(if (selected) Color(0xFF23252D) else Color.Transparent)) {
+    Row(Modifier.height(rowH).fillMaxWidth().background(if (selected) PanelHi else Panel.copy(alpha = 0.55f))) {
         // Header: name + visibility/solo/lock/mute (states shown by icon, not color alone).
         Column(Modifier.width(headerW).fillMaxSize().padding(start = 4.dp)) {
             Text("${st.layers.indexOf(layer) + 1}. ${layer.optString("name")}", maxLines = 1, fontSize = 12.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,

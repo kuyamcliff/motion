@@ -1,5 +1,21 @@
 package com.motionforge.app.ui
 
+import androidx.compose.material.icons.filled.ViewInAr
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.ClosedCaption
+import androidx.compose.material.icons.filled.Straighten
+import androidx.compose.material.icons.filled.CropFree
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Square
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.HorizontalRule
+import androidx.compose.material.icons.filled.Hexagon
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material.icons.filled.CropSquare
+import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -70,7 +86,14 @@ fun InspectorPanel(app: AppState, ui: EditorUi) {
     }
     val layer = st.selectedLayer
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 6.dp)) {
-        Text(ui.tab.name.let { if (it == "ThreeD") "3D" else it } + (layer?.let { " — " + it.optString("name") } ?: ""), fontWeight = FontWeight.Bold)
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 6.dp)) {
+            Text(ui.tab.name.let { if (it == "ThreeD") "3D" else it }, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            if (layer != null && ui.tab !in listOf(InspectorTab.Add, InspectorTab.Comp, InspectorTab.Markers))
+                Text(layer.optString("name"), fontSize = 12.sp, color = TextDim, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = 8.dp).weight(1f, fill = false).background(PanelHi, RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 3.dp))
+            androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+            IconBtn(Icons.Filled.Close, "Close inspector") { ui.tab = InspectorTab.None }
+        }
         when (ui.tab) {
             InspectorTab.Add -> AddLayerPanel(app, ui)
             InspectorTab.Comp -> CompPanel(app)
@@ -106,24 +129,25 @@ fun AddLayerPanel(app: AppState, ui: EditorUi) {
     fun add(kind: String, opts: JSONObject = JSONObject(), tab: InspectorTab = InspectorTab.Layer) { if (st.addLayer(kind, opts) != null) ui.tab = tab }
     SectionTitle("Text & graphics")
     FlowRow {
-        Chip("Text") { add("text", jo("text" to "Title"), InspectorTab.Text) }
-        listOf("rect" to "Rectangle", "ellipse" to "Ellipse", "star" to "Star", "polygon" to "Polygon", "line" to "Line", "arrow" to "Arrow").forEach { (k, n) ->
-            Chip(n) { add("shape", jo("shape" to k), InspectorTab.Shape) }
+        Tile(Icons.Filled.TextFields, "Text") { add("text", jo("text" to "Title"), InspectorTab.Text) }
+        listOf(Triple("rect", "Rectangle", Icons.Filled.CropSquare), Triple("ellipse", "Ellipse", Icons.Filled.Circle), Triple("star", "Star", Icons.Filled.Star),
+            Triple("polygon", "Polygon", Icons.Filled.Hexagon), Triple("line", "Line", Icons.Filled.HorizontalRule), Triple("arrow", "Arrow", Icons.Filled.ArrowForward)).forEach { (k, n, ic) ->
+            Tile(ic, n, tint = Color(0xFFFF9A4D)) { add("shape", jo("shape" to k), InspectorTab.Shape) }
         }
-        Chip("Solid") { add("solid") }
+        Tile(Icons.Filled.Square, "Solid", tint = Accent2) { add("solid") }
     }
     SectionTitle("Utility layers")
     FlowRow {
-        Chip("Adjustment") { add("adjustment", tab = InspectorTab.Effects) }
-        Chip("Null") { add("null") }
-        Chip("Guide (not exported)") { st.addLayer("shape", jo("shape" to "line"))?.let { st.op("setLayer", "layer" to it, "fields" to jo("guide" to true, "name" to "Guide")) } }
-        Chip("Caption track") { st.op("setCaptions", "items" to JSONArray()) }
+        Tile(Icons.Filled.Tune, "Adjustment", tint = TextDim) { add("adjustment", tab = InspectorTab.Effects) }
+        Tile(Icons.Filled.CropFree, "Null", tint = TextDim) { add("null") }
+        Tile(Icons.Filled.Straighten, "Guide (not exported)", tint = TextDim) { st.addLayer("shape", jo("shape" to "line"))?.let { st.op("setLayer", "layer" to it, "fields" to jo("guide" to true, "name" to "Guide")) } }
+        Tile(Icons.Filled.ClosedCaption, "Caption track", tint = KeyColor) { st.op("setCaptions", "items" to JSONArray()) }
     }
     SectionTitle("3D")
     FlowRow {
-        Chip("Camera") { add("camera", tab = InspectorTab.ThreeD) }
-        listOf("point", "spot", "directional", "ambient").forEach { k -> Chip("${k.replaceFirstChar { it.uppercase() }} light") { add("light", jo("light" to k), InspectorTab.ThreeD) } }
-        st.registries.arr("primitives").strings().forEach { p -> Chip("3D $p") { add("model3d", jo("primitive" to p), InspectorTab.ThreeD) } }
+        Tile(Icons.Filled.Videocam, "Camera", tint = Color(0xFF4FC3F7)) { add("camera", tab = InspectorTab.ThreeD) }
+        listOf("point", "spot", "directional", "ambient").forEach { k -> Tile(Icons.Filled.Lightbulb, "${k.replaceFirstChar { it.uppercase() }} light", tint = KeyColor) { add("light", jo("light" to k), InspectorTab.ThreeD) } }
+        st.registries.arr("primitives").strings().forEach { p -> Tile(Icons.Filled.ViewInAr, "3D $p", tint = Color(0xFF4FC3F7)) { add("model3d", jo("primitive" to p), InspectorTab.ThreeD) } }
     }
     SectionTitle("Particles")
     FlowRow { st.registries.arr("particlePresets").strings().forEach { p -> Chip(p.replaceFirstChar { it.uppercase() }) { add("particles", jo("preset" to p), InspectorTab.Particles) } } }
