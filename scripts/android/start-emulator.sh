@@ -3,15 +3,20 @@
 # answering, load settled). Without KVM the emulator runs in software (-accel off): boot takes
 # several minutes and the system can be unstable while post-boot work (dexopt) runs.
 # Usage: scripts/android/start-emulator.sh [avd-name=mf30] [extra emulator args...]
-set -euo pipefail
+# No "set -e": the wait loops below poll commands that are expected to fail until the device is ready.
+set -uo pipefail
 SDK="${ANDROID_SDK_ROOT:-/opt/android-sdk}"
 export PATH="$SDK/platform-tools:$SDK/emulator:$PATH"
 AVD="${1:-mf30}"; shift || true
 ACCEL="-accel off"; [ -e /dev/kvm ] && [ -w /dev/kvm ] && ACCEL=""
-rm -f "$HOME/.android/avd/$AVD.avd/"*.lock
 LOG="${MF_EMU_LOG:-/tmp/mf-emulator.log}"
-nohup emulator -avd "$AVD" -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect $ACCEL -memory 4096 -cores "${MF_EMU_CORES:-4}" "$@" >"$LOG" 2>&1 &
-echo "emulator pid $! (log $LOG)"
+if adb devices 2>/dev/null | grep -q "^emulator-.*device$"; then
+  echo "emulator already running; reusing it"
+else
+  rm -rf "$HOME/.android/avd/$AVD.avd/"*.lock "$HOME/.android/avd/running"
+  nohup emulator -avd "$AVD" -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect $ACCEL -memory 4096 -cores "${MF_EMU_CORES:-4}" "$@" >"$LOG" 2>&1 &
+  echo "emulator pid $! (log $LOG)"
+fi
 adb wait-for-device
 until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; do sleep 5; done
 # On a software-emulated device the NetworkStack process can die from slowness; Android R then deliberately
