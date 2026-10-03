@@ -1,4 +1,4 @@
-stable (system_server 550)
+stable (system_server 555)
 Performing Streamed Install
 Success
 Performing Streamed Install
@@ -105,7 +105,7 @@ INSTRUMENTATION_STATUS: test=packageRoundTrip
 INSTRUMENTATION_STATUS_CODE: 0
 INSTRUMENTATION_RESULT: stream=
 
-Time: 934.427
+Time: 930.242
 
 OK (7 tests)
 
@@ -124,35 +124,14 @@ INSTRUMENTATION_STATUS: class=com.motionforge.app.UiE2ETest
 INSTRUMENTATION_STATUS: current=1
 INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
 INSTRUMENTATION_STATUS: numtests=1
-INSTRUMENTATION_STATUS: stack=androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 60000 ms
-	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:504)
-	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:339)
-	at com.motionforge.app.UiE2ETest.waitDesc(UiE2ETest.kt:50)
-	at com.motionforge.app.UiE2ETest.createEditUndoPlaySave(UiE2ETest.kt:92)
-
-INSTRUMENTATION_STATUS: stream=
-Error in createEditUndoPlaySave(com.motionforge.app.UiE2ETest):
-androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 60000 ms
-	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:504)
-	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:339)
-	at com.motionforge.app.UiE2ETest.waitDesc(UiE2ETest.kt:50)
-	at com.motionforge.app.UiE2ETest.createEditUndoPlaySave(UiE2ETest.kt:92)
-
+INSTRUMENTATION_STATUS: stream=.
 INSTRUMENTATION_STATUS: test=createEditUndoPlaySave
-INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS_CODE: 0
 INSTRUMENTATION_RESULT: stream=
 
-Time: 105.464
-There was 1 failure:
-1) createEditUndoPlaySave(com.motionforge.app.UiE2ETest)
-androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 60000 ms
-	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:504)
-	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:339)
-	at com.motionforge.app.UiE2ETest.waitDesc(UiE2ETest.kt:50)
-	at com.motionforge.app.UiE2ETest.createEditUndoPlaySave(UiE2ETest.kt:92)
+Time: 126.519
 
-FAILURES!!!
-Tests run: 1,  Failures: 1
+OK (1 test)
 
 
 INSTRUMENTATION_CODE: -1
@@ -370,7 +349,7 @@ INSTRUMENTATION_STATUS: test=masksTransitionsBehaviors
 INSTRUMENTATION_STATUS_CODE: 0
 INSTRUMENTATION_RESULT: stream=
 
-Time: 1,145.458
+Time: 1,255.05
 
 OK (15 tests)
 
@@ -394,7 +373,7 @@ INSTRUMENTATION_STATUS: test=fullCreatorWorkflowEndsInVerifiedExport
 INSTRUMENTATION_STATUS_CODE: 0
 INSTRUMENTATION_RESULT: stream=
 
-Time: 1,564.074
+Time: 1,626.442
 
 OK (1 test)
 
@@ -432,7 +411,7 @@ INSTRUMENTATION_STATUS: test=stress500LayersOnDevice
 INSTRUMENTATION_STATUS_CODE: 0
 INSTRUMENTATION_RESULT: stream=
 
-Time: 97.497
+Time: 94.68
 
 OK (2 tests)
 
@@ -484,7 +463,7 @@ INSTRUMENTATION_STATUS: test=decoderSeekStress640
 INSTRUMENTATION_STATUS_CODE: 0
 INSTRUMENTATION_RESULT: stream=
 
-Time: 225.505
+Time: 232.668
 
 OK (3 tests)
 
@@ -522,7 +501,7 @@ INSTRUMENTATION_STATUS: test=capsuleTypedControlsAndPackageRoundTrip
 INSTRUMENTATION_STATUS_CODE: 0
 INSTRUMENTATION_RESULT: stream=
 
-Time: 4.133
+Time: 4.47
 
 OK (2 tests)
 
@@ -574,11 +553,63 @@ INSTRUMENTATION_STATUS: test=timeline_trimMoveTwoFingerCancelAndPinch
 INSTRUMENTATION_STATUS_CODE: 0
 INSTRUMENTATION_RESULT: stream=
 
-Time: 178.445
+Time: 188.855
 
 OK (3 tests)
 
 
 INSTRUMENTATION_CODE: -1
-SUMMARY: 7/8 classes fully passed
-exit 1
+=== com.motionforge.app.GpuPreviewTest
+INSTRUMENTATION_STATUS: class=com.motionforge.app.GpuPreviewTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=
+com.motionforge.app.GpuPreviewTest:
+INSTRUMENTATION_STATUS: test=layersBlendModesAnd3DMatchCpu
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.GpuPreviewTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=layersBlendModesAnd3DMatchCpu
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.GpuPreviewTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=videoDecodesOnGpuAndMatchesCpu
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.GpuPreviewTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=videoDecodesOnGpuAndMatchesCpu
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.motionforge.app.GpuPreviewTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=effectsMattesAdjustmentMatchCpu
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.motionforge.app.GpuPreviewTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=effectsMattesAdjustmentMatchCpu
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_RESULT: stream=
+
+Time: 96.541
+
+OK (3 tests)
+
+
+INSTRUMENTATION_CODE: -1
+SUMMARY: 9/9 classes fully passed
+exit 0

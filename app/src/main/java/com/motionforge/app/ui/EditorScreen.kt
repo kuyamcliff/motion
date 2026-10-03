@@ -207,7 +207,7 @@ fun EditorTopBar(app: AppState, ui: EditorUi) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val (icon, label) = when (st.saveStatus) { "saved" -> Icons.Filled.CloudDone to "Saved"; "error" -> Icons.Filled.ErrorOutline to "Save error"; else -> Icons.Filled.Edit to "Unsaved changes" }
                 Icon(icon, label, tint = if (st.saveStatus == "error") Color.Red else TextDim, modifier = Modifier.size(14.dp))
-                Text(if (compact) " ${st.timecode(st.playhead)}" else " ${st.comp.optString("name")} · ${st.timecode(st.playhead)}",
+                Text(if (compact) " " + when (st.saveStatus) { "saved" -> "Saved"; "error" -> "Save error"; else -> "Edited" } else " ${st.comp.optString("name")} · ${st.timecode(st.playhead)}",
                     fontSize = 11.sp, color = TextDim, fontFamily = FontFamily.Monospace, maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)
             }
         }
@@ -272,7 +272,10 @@ fun Transport(st: EditorState, player: Player, ui: EditorUi) {
     }
     var moreOpen by remember { mutableStateOf(false) }
     fun editPoints() = NativeBridge.call("editPoints").optJSONArray("times")?.let { a -> (0 until a.length()).map { a.getDouble(it) } } ?: emptyList()
-    // Timecode left, the core transport centred, loop + extras right. Fits a 320 dp phone without scrolling.
+    // Timecode left, the core transport centred, loop + extras right. Below 400 dp the keyframe jumps move into the
+    // menu so everything fits a 320 dp phone without scrolling.
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+    val narrow = maxWidth < 400.dp
     Row(Modifier.fillMaxWidth().background(Panel).padding(horizontal = 6.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             // Hours are dropped for comps under an hour so the timecode fits beside the transport on phones.
@@ -282,17 +285,18 @@ fun Transport(st: EditorState, player: Player, ui: EditorUi) {
             Text("${if (player.gpuWindow) "GPU · " else "CPU · "}${if (player.playing) "%.0f fps".format(player.fpsActual) else "%.0f ms".format(player.renderMs)}",
                 fontSize = 10.sp, color = if (player.gpuWindow) Color(0xFF6EE7B7) else TextDim, maxLines = 1, softWrap = false)
         }
-        IconBtn(Icons.Filled.Diamond, "Previous keyframe", tint = KeyColor) { jumpTo(st.keyframeTimes(st.selectedLayer), false) }
+        if (!narrow) IconBtn(Icons.Filled.Diamond, "Previous keyframe", tint = KeyColor) { jumpTo(st.keyframeTimes(st.selectedLayer), false) }
         RepeatButton(Icons.Filled.NavigateBefore, "Previous frame") { player.stepFrames(-1) }
         PlayButton(player)
         RepeatButton(Icons.Filled.NavigateNext, "Next frame") { player.stepFrames(1) }
-        IconBtn(Icons.Filled.Diamond, "Next keyframe", tint = KeyColor) { jumpTo(st.keyframeTimes(st.selectedLayer), true) }
+        if (!narrow) IconBtn(Icons.Filled.Diamond, "Next keyframe", tint = KeyColor) { jumpTo(st.keyframeTimes(st.selectedLayer), true) }
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
             IconBtn(Icons.Filled.Repeat, if (player.loop) "Loop on" else "Loop off", tint = if (player.loop) Accent else TextDim) { player.loop = !player.loop }
             Box {
                 IconBtn(Icons.Filled.MoreHoriz, "Transport options") { moreOpen = true }
                 DropdownMenu(moreOpen, { moreOpen = false }) {
-                    listOf(
+                    ((if (narrow) listOf<Pair<String, () -> Unit>>("Previous keyframe" to { jumpTo(st.keyframeTimes(st.selectedLayer), false) },
+                        "Next keyframe" to { jumpTo(st.keyframeTimes(st.selectedLayer), true) }) else emptyList()) + listOf(
                         "Jump to beginning" to { player.seek(0.0) },
                         "Jump to end" to { player.seek(st.duration) },
                         "Previous edit point" to { jumpTo(editPoints(), false) },
@@ -301,10 +305,11 @@ fun Transport(st: EditorState, player: Player, ui: EditorUi) {
                         "Set range in" to { player.rangeIn = st.playhead },
                         "Set range out" to { player.rangeOut = st.playhead },
                         "Clear range" to { player.rangeIn = -1.0; player.rangeOut = -1.0 },
-                    ).forEach { (t, f) -> DropdownMenuItem(text = { Text(t) }, onClick = { moreOpen = false; f() }) }
+                    )).forEach { (t, f) -> DropdownMenuItem(text = { Text(t) }, onClick = { moreOpen = false; f() }) }
                 }
             }
         }
+    }
     }
 }
 

@@ -30,6 +30,17 @@ All results below come from the build environment: a Linux container, and an And
 | `ScreensE2ETest` (15) | **15/15 as one class run** on the `uitest` build. On the *debug* build, an emulator input-dispatch ANR in the first test aborted whole-class runs (see below). | every screen and inspector panel, verified after reopening |
 | `FailureArtifacts` (rule) | — | screenshot + UI dump on every failure |
 
+## GPU preview and redesign (latest)
+
+* **Freeze fix:** UI-thread geometry queries (selection handles, taps) used the frame renderer's mutex and waited for whole CPU renders. They now use a separate query renderer.
+* **GPU preview:** the engine emits a per-frame draw list (`Renderer::renderPlan`), which an OpenGL ES compositor draws. Video decodes in hardware straight into textures, layers with static content are cached as textures with per-frame transforms, and all 18 blend modes run in shaders.
+  * Host: the plan composite matches the CPU render for all 300 feature pairs.
+  * Device: `GpuPreviewTest` 3/3 (GPU vs CPU pixel parity, hardware video, scrubbing).
+* **UI redesign:**
+  * Navy and blue theme, Home with bottom navigation, icon tool bar, gradient transport.
+  * Phone, small-phone (360 dp) and landscape layouts, edge to edge.
+* **Final full run** on the redesigned UI: **9/9 classes, 37/37 tests** (`test-logs/android-full-suite-uitest.txt`). Host: 61/61.
+
 ## Bugs the device and combination suites found (all fixed)
 
 1. **Video showed green frames after the decoder started.** The decoder flushed right after `start()`, which discards the H.264 SPS/PPS. Found by pixel inspection of the workflow export; ffmpeg confirmed the source file was clean.
