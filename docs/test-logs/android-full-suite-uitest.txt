@@ -1,4 +1,4 @@
-stable (system_server 555)
+stable (system_server 552)
 Performing Streamed Install
 Success
 Performing Streamed Install
@@ -105,7 +105,7 @@ INSTRUMENTATION_STATUS: test=packageRoundTrip
 INSTRUMENTATION_STATUS_CODE: 0
 INSTRUMENTATION_RESULT: stream=
 
-Time: 930.242
+Time: 1,034.29
 
 OK (7 tests)
 
@@ -129,7 +129,7 @@ INSTRUMENTATION_STATUS: test=createEditUndoPlaySave
 INSTRUMENTATION_STATUS_CODE: 0
 INSTRUMENTATION_RESULT: stream=
 
-Time: 126.519
+Time: 128.473
 
 OK (1 test)
 
@@ -349,7 +349,7 @@ INSTRUMENTATION_STATUS: test=masksTransitionsBehaviors
 INSTRUMENTATION_STATUS_CODE: 0
 INSTRUMENTATION_RESULT: stream=
 
-Time: 1,255.05
+Time: 1,342.339
 
 OK (15 tests)
 
@@ -373,7 +373,7 @@ INSTRUMENTATION_STATUS: test=fullCreatorWorkflowEndsInVerifiedExport
 INSTRUMENTATION_STATUS_CODE: 0
 INSTRUMENTATION_RESULT: stream=
 
-Time: 1,626.442
+Time: 1,655.145
 
 OK (1 test)
 
@@ -411,7 +411,7 @@ INSTRUMENTATION_STATUS: test=stress500LayersOnDevice
 INSTRUMENTATION_STATUS_CODE: 0
 INSTRUMENTATION_RESULT: stream=
 
-Time: 94.68
+Time: 106.829
 
 OK (2 tests)
 
@@ -463,7 +463,7 @@ INSTRUMENTATION_STATUS: test=decoderSeekStress640
 INSTRUMENTATION_STATUS_CODE: 0
 INSTRUMENTATION_RESULT: stream=
 
-Time: 232.668
+Time: 236.93
 
 OK (3 tests)
 
@@ -501,7 +501,7 @@ INSTRUMENTATION_STATUS: test=capsuleTypedControlsAndPackageRoundTrip
 INSTRUMENTATION_STATUS_CODE: 0
 INSTRUMENTATION_RESULT: stream=
 
-Time: 4.47
+Time: 4.814
 
 OK (2 tests)
 
@@ -553,7 +553,7 @@ INSTRUMENTATION_STATUS: test=timeline_trimMoveTwoFingerCancelAndPinch
 INSTRUMENTATION_STATUS_CODE: 0
 INSTRUMENTATION_RESULT: stream=
 
-Time: 188.855
+Time: 203.435
 
 OK (3 tests)
 
@@ -605,7 +605,7 @@ INSTRUMENTATION_STATUS: test=effectsMattesAdjustmentMatchCpu
 INSTRUMENTATION_STATUS_CODE: 0
 INSTRUMENTATION_RESULT: stream=
 
-Time: 96.541
+Time: 107.29
 
 OK (3 tests)
 
