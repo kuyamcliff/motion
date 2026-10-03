@@ -104,4 +104,61 @@ class VideoLayerDeviceTest {
             assertTrue("bad frames: $bad", bad.isEmpty())
         } finally { st.close(); NativeBridge.call("deleteProject", jo("id" to id)) }
     }
+
+    /** Proxies: a low-res copy decodes in the preview at the same placement; export reads the original. */
+    @Test
+    fun proxyUsedInPreviewOriginalInExport() {
+        val clip = makeClip(640, 360, "proxy-src.mp4")
+        val st = EditorState()
+        val id = newOpen(st, "proxy", 2.0, 640, 360)
+        try {
+            val aid = st.op("addAsset", "asset" to Importer.probe(ctx, Uri.fromFile(clip), Importer.Kind.VIDEO))!!.getString("asset")
+            st.apply(jo("op" to "addLayer", "kind" to "video", "options" to jo("asset" to aid), "at" to 0.0))
+            // Create the proxy through the same call the Media manager uses.
+            var lastProgress = 0f
+            val err = com.motionforge.app.ui.MediaOps.makeProxy(ctx, st, aid) { p -> lastProgress = p; true }
+            assertEquals(null, err)
+            assertEquals(1f, lastProgress, 1e-3f)
+            val proxy = st.asset(aid)!!.getJSONObject("proxy")
+            val pf = File(proxy.getString("path"))
+            assertTrue("proxy file written", pf.length() > 1000)
+            // 640x360 source → proxy at most 540 lines, so unchanged here; make it smaller explicitly for the check below.
+            assertTrue(proxy.getInt("height") <= 540)
+            // The proxy file itself is a valid, smaller-or-equal H.264 video with the source duration.
+            val mmr = android.media.MediaMetadataRetriever().apply { setDataSource(pf.absolutePath) }
+            assertEquals(2000.0, mmr.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)!!.toDouble(), 250.0)
+            val pframe = mmr.getFrameAtTime(1_000_000, android.media.MediaMetadataRetriever.OPTION_CLOSEST)!!
+            mmr.release()
+            assertTrue("proxy frame blue at right: ${Integer.toHexString(pframe.getPixel(pframe.width * 500 / 640, pframe.height / 2))}",
+                isBlue(pframe.getPixel(pframe.width * 500 / 640, pframe.height / 2)))
+
+            // Preview render uses the proxy (stats) and shows the same picture.
+            val b = Bitmap.createBitmap(640, 360, Bitmap.Config.ARGB_8888)
+            NativeBridge.call("clearCaches")
+            val stats = org.json.JSONObject(NativeBridge.nativeRenderBitmap(b, 1.0, false, false))
+            assertTrue("preview decoded the proxy: $stats", stats.optInt("proxyFrames") >= 1)
+            assertTrue("preview blue at (500,180)", isBlue(b.getPixel(500, 180)))
+            assertTrue("preview red square at (160,180)", isRed(b.getPixel(160, 180)))
+            // Export mode never uses the proxy.
+            val ex = org.json.JSONObject(NativeBridge.nativeRenderBitmap(b, 1.0, false, true))
+            assertEquals("export must decode the original: $ex", 0, ex.optInt("proxyFrames"))
+            // Preference off → originals in preview too.
+            NativeBridge.call("setRenderOptions", jo("useProxies" to false))
+            try {
+                val off = org.json.JSONObject(NativeBridge.nativeRenderBitmap(b, 1.0, false, false))
+                assertEquals(0, off.optInt("proxyFrames"))
+            } finally { NativeBridge.call("setRenderOptions", jo("useProxies" to true)) }
+            // A deleted proxy file falls back to the original, with no missing-media warning.
+            pf.delete()
+            NativeBridge.call("clearCaches"); MediaBridge.releaseAll()
+            val gone = org.json.JSONObject(NativeBridge.nativeRenderBitmap(b, 1.0, false, false))
+            assertTrue("fallback picture blue", isBlue(b.getPixel(500, 180)))
+            assertEquals("no warnings: $gone", 0, gone.optJSONArray("warnings")?.length() ?: 0)
+            // Proxy survives save/reopen; removing it is one undo step.
+            assertTrue(st.save()); st.close(); assertEquals(null, st.open(id))
+            assertTrue(st.asset(aid)!!.has("proxy"))
+            com.motionforge.app.ui.MediaOps.removeProxy(st, aid)
+            assertEquals(null, st.asset(aid)!!.optJSONObject("proxy"))
+        } finally { st.close(); NativeBridge.call("deleteProject", jo("id" to id)) }
+    }
 }

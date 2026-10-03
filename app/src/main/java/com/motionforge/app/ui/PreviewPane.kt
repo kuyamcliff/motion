@@ -37,7 +37,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
+import kotlin.math.roundToInt
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -98,7 +100,7 @@ fun PreviewPane(app: AppState, ui: EditorUi, modifier: Modifier) {
     }
 
     Box(modifier.background(Color.Black).onSizeChanged { viewSize = it; player.setViewportWidth(it.width) }
-        .semantics { contentDescription = "Preview canvas" }
+        .semantics { contentDescription = "Preview canvas"; stateDescription = "Zoom ${(zoom * 100).roundToInt()}%" }
         .pointerInput(ui.previewMode, sel?.optString("id")) {
             detectTapGestures(
                 onDoubleTap = { zoom = 1f; pan = Offset.Zero },

@@ -474,3 +474,53 @@ TEST(render_hit_test_and_quad) {
     CHECK_NEAR(q[0].x, 150, 1e-6);
     CHECK_NEAR(q[2].y, 200, 1e-6);
 }
+
+TEST(video_proxy_used_in_preview_never_in_export) {
+    Proj p = makeProj(320, 180);
+    // Original: 320x180 red. Proxy: 160x90 green (a different colour so the source is visible in the render).
+    p.op({{"op", "addAsset"}, {"asset", {{"id", "VP"}, {"kind", "video"}, {"path", "/nonexistent/orig.mp4"}, {"width", 320}, {"height", 180},
+                                        {"fps", 30.0}, {"duration", 4.0}}}});
+    auto solidImg = [](int w, int h, uint8_t r, uint8_t g) {
+        auto img = std::make_shared<Image>(w, h);
+        for (size_t i = 0; i < img->px.size(); i += 4) { img->px[i] = r; img->px[i + 1] = g; img->px[i + 2] = 0; img->px[i + 3] = 255; }
+        return img;
+    };
+    for (int f = 0; f < 120; ++f) {
+        g_media.putFrame("VP", f, solidImg(320, 180, 255, 0));
+        g_media.putFrame("VP#proxy", f, solidImg(160, 90, 0, 255));
+    }
+    p.add("video", {{"asset", "VP"}});
+    Renderer r(&g_media);
+    RenderSettings rs;
+    RenderStats st;
+    // No proxy yet: original.
+    Image a = r.renderFrame(p.doc, "C1", 1.0, rs, &st);
+    CHECK(px(a, 160, 90)[0] > 200 && px(a, 160, 90)[1] < 50);
+    CHECK_EQ(st.proxyFrames, 0);
+    // Proxy attached: the preview uses it, at the same placement and size (full frame covered).
+    p.op({{"op", "updateAsset"}, {"asset", "VP"}, {"fields", {{"proxy", {{"path", "/nonexistent/proxy.mp4"}, {"width", 160}, {"height", 90}}}}}}});
+    RenderStats st2;
+    Image b = r.renderFrame(p.doc, "C1", 1.0, rs, &st2);
+    CHECK(px(b, 160, 90)[1] > 200 && px(b, 160, 90)[0] < 50);
+    CHECK(px(b, 2, 2)[1] > 200 && px(b, 317, 177)[1] > 200);
+    CHECK(st2.proxyFrames >= 1);
+    // Export always decodes the original.
+    RenderSettings ex;
+    ex.exportMode = true;
+    Image c = r.renderFrame(p.doc, "C1", 1.0, ex);
+    CHECK(px(c, 160, 90)[0] > 200 && px(c, 160, 90)[1] < 50);
+    // Proxies switched off for preview → original.
+    RenderSettings off;
+    off.useProxies = false;
+    Image d = r.renderFrame(p.doc, "C1", 1.0, off);
+    CHECK(px(d, 160, 90)[0] > 200);
+    // A proxy whose file is gone falls back to the original instead of showing "missing media".
+    p.op({{"op", "updateAsset"}, {"asset", "VP"}, {"fields", {{"proxy", {{"path", "/nonexistent/gone.mp4"}, {"width", 160}, {"height", 90}}}}}}});
+    FileMediaProvider fresh;
+    for (int f = 0; f < 120; ++f) fresh.putFrame("VP", f, solidImg(320, 180, 255, 0));
+    Renderer r2(&fresh);
+    RenderStats st3;
+    Image e = r2.renderFrame(p.doc, "C1", 1.0, rs, &st3);
+    CHECK(px(e, 160, 90)[0] > 200);
+    CHECK(st3.warnings.empty());
+}

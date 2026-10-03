@@ -40,12 +40,12 @@ if [ -n "$FILTER" ]; then
 else
   # One instrumentation per class: a crash/ANR in one class cannot abort the others.
   : > "$OUT/instrument-$stamp.txt"
-  for c in EngineE2ETest UiE2ETest ScreensE2ETest WorkflowRegressionTest CombinationsDeviceTest VideoLayerDeviceTest CapsuleScriptDeviceTest; do
+  for c in EngineE2ETest UiE2ETest ScreensE2ETest WorkflowRegressionTest CombinationsDeviceTest VideoLayerDeviceTest CapsuleScriptDeviceTest GestureE2ETest; do
     echo "=== com.motionforge.app.$c" | tee -a "$OUT/instrument-$stamp.txt"
     run_one class "com.motionforge.app.$c" | tee -a "$OUT/instrument-$stamp.txt"
     scripts/android/wait-stable.sh >/dev/null || true
   done
-  passed=$(grep -c "^OK (" "$OUT/instrument-$stamp.txt"); total=7
+  passed=$(grep -c "^OK (" "$OUT/instrument-$stamp.txt"); total=8
   echo "SUMMARY: $passed/$total classes fully passed" | tee -a "$OUT/instrument-$stamp.txt"
 fi
 adb logcat -d > "$OUT/logcat-$stamp.txt" 2>/dev/null || true

@@ -1224,7 +1224,25 @@ class RenderJob {
             double nw = a->value("width", 100), nh = a->value("height", 100);
             double ls = hScale(H);
             int mw = std::max(16, (int)std::ceil(nw * ls)), mh = std::max(16, (int)std::ceil(nh * ls));
-            ImagePtr src = ty == "image" ? media->image(*a, mw, mh) : media->videoFrame(*a, layerSourceTime(L, t), mw, mh);
+            ImagePtr src;
+            if (ty == "video" && F.rs.useProxies && !F.rs.exportMode) {
+                // Proxy: a low-res copy of the clip for smooth preview. It decodes into the same asset space (drawRaster
+                // scales to nw x nh), so layouts are identical; export always reads the original.
+                const json& px = jobj(*a, "proxy");
+                if (!px.value("path", std::string()).empty()) {
+                    json pa = *a;
+                    pa["id"] = a->value("id", std::string()) + "#proxy";
+                    pa["path"] = px["path"];
+                    pa.erase("uri");
+                    double pw = px.value("width", nw), ph = px.value("height", nh);
+                    pa["width"] = pw;
+                    pa["height"] = ph;
+                    src = media->videoFrame(pa, layerSourceTime(L, t), std::max(16, (int)std::ceil(pw * ls)), std::max(16, (int)std::ceil(ph * ls)));
+                    if (F.stats && src && !src->empty()) ++F.stats->proxyFrames;
+                }
+            }
+            if (!src || src->empty())  // no proxy, or the proxy file is missing: decode the original
+                src = ty == "image" ? media->image(*a, mw, mh) : media->videoFrame(*a, layerSourceTime(L, t), mw, mh);
             if (!src || src->empty()) {
                 if (F.stats) F.stats->warnings.push_back("Missing media for layer '" + L.value("name", "") + "'.");
                 // Draw an explicit offline placeholder (checker) so missing media is never silent.

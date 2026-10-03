@@ -27,6 +27,7 @@
 using namespace mf;
 
 namespace {
+std::atomic<bool> g_useProxies{true};  // preview reads asset proxies (Settings → "Use proxies in preview")
 
 std::unique_ptr<mfa::AndroidMediaProvider> g_media;
 std::unique_ptr<Engine> g_engine;
@@ -317,6 +318,10 @@ json call(const std::string& m, const json& a) {
         return E.openProject(a.value("id", std::string()), e, a.value("recover", false)) ? okj() : err(e);
     }
     if (m == "closeProject") { E.closeProject(); return okj(); }
+    if (m == "setRenderOptions") {
+        if (a.contains("useProxies")) g_useProxies = a.value("useProxies", true);
+        return okj({{"useProxies", g_useProxies.load()}});
+    }
     if (m == "simulateCrash") { E.abandonProjectForTesting(); return okj(); }
     if (m == "recoveryInfo") {
         RecoveryInfo r = E.store().checkRecovery(a.value("id", std::string()));
@@ -789,6 +794,7 @@ JNIEXPORT jstring JNICALL Java_com_motionforge_app_engine_NativeBridge_nativeRen
     RenderSettings rs;
     rs.draft = draft;
     rs.exportMode = exportMode;
+    rs.useProxies = g_useProxies.load();
     RenderStats st;
     Image img = g_engine->render(t, scale, rs, &st);
     void* px = nullptr;
@@ -797,7 +803,7 @@ JNIEXPORT jstring JNICALL Java_com_motionforge_app_engine_NativeBridge_nativeRen
     for (int y = 0; y < h; ++y) std::memcpy((uint8_t*)px + (size_t)y * info.stride, img.row(y), (size_t)w * 4);
     AndroidBitmap_unlockPixels(e, bitmap);
     return jout(e, json{{"ms", st.ms}, {"layers", st.layersRendered}, {"passes", st.passes}, {"cacheHits", st.cacheHits}, {"cacheMisses", st.cacheMisses},
-                        {"warnings", st.warnings}}.dump());
+                        {"proxyFrames", st.proxyFrames}, {"warnings", st.warnings}}.dump());
 }
 
 JNIEXPORT jboolean JNICALL Java_com_motionforge_app_engine_NativeBridge_nativeRenderRgba(JNIEnv* e, jclass, jobject buffer, jint w, jint h, jdouble t) {

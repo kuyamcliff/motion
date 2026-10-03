@@ -27,6 +27,7 @@ class MfApplication : Application() {
             "developer" to Settings.developerMode,
         )
         NativeBridge.nativeInit(cfg.toString())
+        NativeBridge.call("setRenderOptions", jo("useProxies" to Settings.useProxies))
     }
 
     override fun onTrimMemory(level: Int) {
@@ -111,6 +112,10 @@ object Settings {
     var previewQuality: String
         get() = prefs.getString("previewQuality", "auto") ?: "auto"
         set(v) = prefs.edit().putString("previewQuality", v).apply()
+    /** Preview decodes low-res proxy files when a clip has one (export always uses the originals). */
+    var useProxies: Boolean
+        get() = prefs.getBoolean("useProxies", true)
+        set(v) { prefs.edit().putBoolean("useProxies", v).apply(); com.motionforge.app.engine.NativeBridge.call("setRenderOptions", com.motionforge.app.engine.jo("useProxies" to v)) }
     var snapping: Boolean
         get() = prefs.getBoolean("snapping", true)
         set(v) = prefs.edit().putBoolean("snapping", v).apply()

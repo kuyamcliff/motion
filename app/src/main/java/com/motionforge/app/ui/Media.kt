@@ -29,6 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,6 +43,13 @@ import com.motionforge.app.engine.jo
 import com.motionforge.app.engine.objects
 import com.motionforge.app.media.Importer
 import com.motionforge.app.media.MediaBridge
+import com.motionforge.app.media.ProxyMaker
+import com.motionforge.app.Settings
+import androidx.compose.material3.Switch
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.motionforge.app.toast
 import org.json.JSONObject
 import java.io.File
@@ -74,7 +83,7 @@ object MediaOps {
         val kind = when (a.optString("type")) { "video" -> Importer.Kind.VIDEO; "audio" -> Importer.Kind.AUDIO; else -> Importer.Kind.IMAGE }
         val probe = try { Importer.probe(ctx, uri, kind) } catch (e: Exception) { return false }
         val ok = st.apply(jo("op" to "relinkAsset", "asset" to assetId, "uri" to probe.optString("uri"), "checksum" to probe.optString("checksum"),
-            "fields" to jo("path" to "", "name" to probe.optString("name")))) != null
+            "fields" to jo("path" to "", "name" to probe.optString("name"), "proxy" to JSONObject.NULL))) != null
         NativeBridge.call("clearCaches")
         return ok
     }
@@ -115,6 +124,24 @@ object MediaOps {
         return bytes
     }
 
+    /** Creates a proxy for a video asset and records it on the asset (one undo step). Runs on the caller's thread. */
+    fun makeProxy(ctx: Context, st: EditorState, assetId: String, progress: (Float) -> Boolean = { true }): String? {
+        val a = st.asset(assetId) ?: return "Media not found."
+        if (a.optString("type") != "video") return "Only video clips have proxies."
+        val proxy = try { ProxyMaker.make(ctx, a, progress = progress) } catch (e: Throwable) { return e.message ?: e.toString() }
+        return if (st.apply(jo("op" to "updateAsset", "label" to "Create Proxy", "asset" to assetId, "fields" to jo("proxy" to proxy))) != null) null
+        else "The proxy could not be attached."
+    }
+
+    /** Detaches and deletes an asset's proxy. */
+    fun removeProxy(st: EditorState, assetId: String) {
+        val path = st.asset(assetId)?.optJSONObject("proxy")?.optString("path").orEmpty()
+        st.apply(jo("op" to "updateAsset", "label" to "Remove Proxy", "asset" to assetId, "fields" to jo("proxy" to JSONObject.NULL)))
+        if (path.isNotEmpty()) File(path).delete()
+    }
+
+    fun proxyBytes(ctx: Context): Long = ProxyMaker.dir(ctx).walkBottomUp().filter { it.isFile }.sumOf { it.length() }
+
     fun thumbnail(asset: JSONObject): Bitmap? = try {
         when (asset.optString("type")) {
             "video" -> MediaBridge.videoFrame(asset.toString(), minOf(1.0, asset.optDouble("duration", 0.0) / 2), 160, 90)
@@ -142,6 +169,19 @@ fun MediaManagerScreen(app: AppState) {
     val ctx = LocalContext.current
     var refresh by remember { mutableIntStateOf(0) }
     var relinkFor by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    var proxyJobs by remember { mutableStateOf(mapOf<String, Float>()) }  // asset id → progress
+    var useProxies by remember { mutableStateOf(Settings.useProxies) }
+    fun startProxy(id: String) {
+        if (id in proxyJobs) return
+        proxyJobs = proxyJobs + (id to 0f)
+        scope.launch {
+            val e = withContext(Dispatchers.Default) { MediaOps.makeProxy(ctx, st, id) { p -> scope.launch { if (id in proxyJobs) proxyJobs = proxyJobs + (id to p) }; true } }
+            proxyJobs = proxyJobs - id
+            if (e != null) app.toast("Proxy failed: $e", true)
+            refresh++
+        }
+    }
     val usage = remember(st.revision, refresh) { MediaOps.usage(st) }
     val assets = st.doc.arr("assets").objects()
     val importFiles = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris -> uris.forEach { importIntoProject(app, ctx, it) }; refresh++ }
@@ -163,6 +203,15 @@ fun MediaManagerScreen(app: AppState) {
                 app.toast("Copied $ok media files into the project" + if (bad > 0) "; $bad could not be read" else ".", bad > 0)
             }
             Chip("Clear media caches") { val b = MediaOps.clearCaches(ctx); app.toast("Freed ${b / 1_000_000} MB of decoded caches.") }
+            Chip("Make proxies for all video") {
+                assets.filter { it.optString("type") == "video" && it.optJSONObject("proxy") == null }.forEach { startProxy(it.optString("id")) }
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Switch(useProxies, { useProxies = it; Settings.useProxies = it; app.player?.requestRender() },
+                modifier = Modifier.semantics { contentDescription = "Use proxies in preview" })
+            Text("  Use proxies in preview (export always uses originals) · ${remember(refresh) { MediaOps.proxyBytes(ctx) } / 1_000_000} MB of proxies",
+                fontSize = 12.sp, color = TextDim)
         }
         SmallLabel("${assets.size} media items · ${assets.count { (usage[it.optString("id")] ?: 0) == 0 }} unused")
         if (assets.isEmpty()) Text("No media yet. Import from the gallery, Files, or a whole folder.", color = TextDim)
@@ -187,12 +236,19 @@ fun MediaManagerScreen(app: AppState) {
                         if (a.optBoolean("vfr")) append(" · VFR")
                         if (a.optBoolean("hdr")) append(" · HDR")
                         if (a.optBoolean("collected")) append(" · in project")
+                        a.optJSONObject("proxy")?.let { append(" · proxy ${it.optInt("height")}p") }
                     }, fontSize = 12.sp, color = TextDim)
                     Text(if (!available) "MISSING — relink it" else if (used == 0) "Unused" else "Used by $used layer${if (used == 1) "" else "s"}",
                         fontSize = 12.sp, color = if (!available) Color(0xFFFF7A7A) else if (used == 0) Color(0xFFFFB74D) else Color(0xFF66BB6A))
                 }
                 Column {
                     TextButton(onClick = { relinkFor = id; relink.launch(arrayOf("*/*")) }) { Text(if (available) "Replace" else "Relink") }
+                    if (a.optString("type") == "video" && available) when {
+                        id in proxyJobs -> Text("Proxy ${(proxyJobs[id]!! * 100).toInt()}%", fontSize = 12.sp, color = TextDim,
+                            modifier = Modifier.padding(8.dp).semantics { contentDescription = "Creating proxy for ${a.optString("name")}" })
+                        a.optJSONObject("proxy") != null -> TextButton(onClick = { MediaOps.removeProxy(st, id); refresh++ }) { Text("Remove proxy") }
+                        else -> TextButton(onClick = { startProxy(id) }, modifier = Modifier.semantics { contentDescription = "Make proxy for ${a.optString("name")}" }) { Text("Make proxy") }
+                    }
                     if (used == 0) TextButton(onClick = { st.op("removeAsset", "asset" to id) }) { Text("Remove") }
                     else TextButton(onClick = { st.selection = st.layers.filter { it.optString("asset") == id }.map { it.optString("id") }.toSet(); app.back() }) { Text("Show") }
                 }

@@ -58,10 +58,12 @@ struct RenderSettings {
     std::string soloEffect;    // effect id rendered solo (others bypassed) on its layer
     bool bypassEffects = false;
     int particleBudget = 100000;  // adaptive quality hook
+    bool useProxies = true;    // preview decodes an asset's low-res "proxy" file when present (never in exportMode)
 };
 
 struct RenderStats {
     int layersRendered = 0, passes = 0, cacheHits = 0, cacheMisses = 0;
+    int proxyFrames = 0;  // video frames decoded from proxies instead of the originals
     double ms = 0;
     std::vector<std::string> warnings;
 };

@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -148,6 +149,7 @@ fun Timeline(app: AppState, ui: EditorUi, modifier: Modifier) {
         }
         // Zoom / pan strip.
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()
+            .semantics { contentDescription = "Timeline zoom"; stateDescription = "${ui.timelineZoom.roundToInt()} pixels per second" }
             .pointerInput(Unit) {
                 awaitEachGesture {
                     awaitFirstDown()
