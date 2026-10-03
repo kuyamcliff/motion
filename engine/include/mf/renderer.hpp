@@ -68,8 +68,42 @@ struct RenderStats {
     std::vector<std::string> warnings;
 };
 
+// GPU draw list for one frame (see Renderer::renderPlan). Items are composited bottom→top with their blend mode and
+// opacity; images are premultiplied RGBA. H maps item pixel space (image pixels, or asset pixels for video) to output
+// pixels, including perspective for 3D layers.
+struct PlanItem {
+    enum class Kind { Raster, Video };
+    Kind kind = Kind::Raster;
+    std::string layerId;
+    std::shared_ptr<const Image> image;  // Raster
+    std::string cacheKey;                // Raster: non-empty when the image is reused across frames (GPU keeps the texture)
+    Mat3 H;
+    float opacity = 1;
+    std::string blend = "normal";
+    json asset;                          // Video: engine asset (may carry "proxy")
+    double sourceTime = 0;               // Video: seconds into the media
+    int width = 0, height = 0;           // item pixel space size (image size, or asset size for video)
+};
+
+struct RenderPlan {
+    int W = 0, H = 0;
+    float bg[4] = {0, 0, 0, 1};
+    bool transparent = false;
+    bool fallback = false;       // a single full-frame raster (features the GPU path does not composite yet)
+    std::string fallbackReason;
+    std::vector<PlanItem> items;
+    int cachedRasters = 0, frameRasters = 0, videoItems = 0;
+};
+
+// Reference CPU compositor for a RenderPlan: the exact semantics the GPU compositor implements (bilinear sampling of
+// each item through inverse(H), then the engine's blend formula). Used by tests and as a GPU-less fallback.
+Image compositePlan(const RenderPlan& plan, MediaProvider* media);
+
 class Renderer {
    public:
+    // Frame as a GPU draw list instead of pixels: video layers become decode-and-sample items, layers with static
+    // content become cached layer-space rasters transformed per frame, everything else is a per-frame raster.
+    RenderPlan renderPlan(const json& project, const std::string& compId, double t, const RenderSettings& rs, RenderStats* stats = nullptr);
     explicit Renderer(MediaProvider* media);
     ~Renderer();
     Image renderFrame(const json& project, const std::string& compId, double t, const RenderSettings& rs, RenderStats* stats = nullptr);

@@ -18,7 +18,7 @@ namespace mf {
 json OpOutcome::toJson() const { return {{"ok", ok}, {"error", error}, {"label", label}, {"data", data}}; }
 
 Engine::Engine(EngineConfig cfg, MediaProvider* media)
-    : cfg_(std::move(cfg)), media_(media), store_(pathJoin(cfg_.dataDir, "projects")), renderer_(media) {
+    : cfg_(std::move(cfg)), media_(media), store_(pathJoin(cfg_.dataDir, "projects")), renderer_(media), query_(media) {
     for (const char* d : {"presets", "capsules", "scripts", "extensions", "templates", "exports"}) makeDirs(pathJoin(cfg_.dataDir, d));
     if (!cfg_.cacheDir.empty()) makeDirs(cfg_.cacheDir);
     doc_.onCommit = [this](const std::string& label, const json& patch, uint64_t) {
@@ -68,6 +68,7 @@ bool Engine::openProject(const std::string& id, std::string& err, bool recover) 
         store_.save(id, d, e, true);
     }
     renderer_.clearCaches();
+    query_.clearCaches();
     renderer_.audio().resetState();
     saveStatus_ = "saved";
     return true;
@@ -215,13 +216,13 @@ Image Engine::render(double t, double scale, RenderSettings rs, RenderStats* sta
 
 std::string Engine::hitTest(double t, double x, double y) {
     auto snap = doc_.snapshot();
-    return renderer_.hitTest(*snap, activeCompId(), t, x, y);
+    return query_.hitTest(*snap, activeCompId(), t, x, y);
 }
 
 json Engine::layerQuad(const std::string& layerId, double t) {
     auto snap = doc_.snapshot();
     Vec2 q[4];
-    if (!renderer_.layerQuad(*snap, activeCompId(), layerId, t, q)) return json();
+    if (!query_.layerQuad(*snap, activeCompId(), layerId, t, q)) return json();
     json out = json::array();
     for (auto& p : q) out.push_back({p.x, p.y});
     return out;
@@ -330,6 +331,7 @@ json Engine::capabilities() const {
 
 void Engine::clearCaches() {
     renderer_.clearCaches();
+    query_.clearCaches();
     if (!cfg_.cacheDir.empty()) {
         for (auto& n : listDir(cfg_.cacheDir)) removeTree(pathJoin(cfg_.cacheDir, n));
     }

@@ -1612,10 +1612,9 @@ class RenderJob {
         return F.cam.view.transformPoint(c).z;
     }
 
-    Image renderComp(Frame& F) {
+    // Visible layers bottom→top (solo, mattes, guides and 3D depth sorting applied). Sets up the camera.
+    std::vector<const json*> layerOrder(Frame& F) {
         const json& comp = *F.comp;
-        Image acc(F.W, F.H);
-        if (F.depth > 0 || !F.rs.transparentBackground) acc.fill(parseColor(comp.value("bg", json({0, 0, 0, 1}))));
         setupCamera(F);
         const json& layers = jarr(comp, "layers");
         // Layers used as track mattes are hidden from normal compositing.
@@ -1650,6 +1649,32 @@ class RenderJob {
                 i = j;
             }
         }
+        return order;
+    }
+
+    // Applies L's track matte to lb. False when the layer ends up invisible (non-inverted matte absent).
+    bool applyMatte(const Frame& F, const json& L, LayerBuf& lb) {
+        const json& mt = L.value("matte", json());
+        if (!mt.is_object()) return true;
+        const json* ML = findLayer(*F.comp, mt.value("layer", ""));
+        if (!ML) return true;
+        LayerBuf mb;
+        std::string mode = mt.value("mode", std::string("alpha"));
+        bool inv = mt.value("invert", false);
+        MatteMode mm = mode == "luma" ? (inv ? MatteMode::LumaInverted : MatteMode::Luma) : (inv ? MatteMode::AlphaInverted : MatteMode::Alpha);
+        if (layerActiveAt(*ML, F.t) && renderLayer(F, *ML, F.t, mb)) {
+            if (mb.opacity < 1) for (auto& v : mb.img.px) v = (uint8_t)(v * mb.opacity);
+            applyTrackMatte(lb.img, mb.img, mm, {0, 0, F.W, F.H});
+            return true;
+        }
+        return inv;
+    }
+
+    Image renderComp(Frame& F) {
+        const json& comp = *F.comp;
+        Image acc(F.W, F.H);
+        if (F.depth > 0 || !F.rs.transparentBackground) acc.fill(parseColor(comp.value("bg", json({0, 0, 0, 1}))));
+        std::vector<const json*> order = layerOrder(F);
         for (const json* Lp : order) {
             const json& L = *Lp;
             std::string ty = L.value("type", "");
@@ -1669,26 +1694,197 @@ class RenderJob {
             }
             LayerBuf lb;
             if (!renderLayer(F, L, F.t, lb)) continue;
-            const json& mt = L.value("matte", json());
-            if (mt.is_object()) {
-                const json* ML = findLayer(comp, mt.value("layer", ""));
-                if (ML) {
-                    LayerBuf mb;
-                    std::string mode = mt.value("mode", std::string("alpha"));
-                    bool inv = mt.value("invert", false);
-                    MatteMode mm = mode == "luma" ? (inv ? MatteMode::LumaInverted : MatteMode::Luma) : (inv ? MatteMode::AlphaInverted : MatteMode::Alpha);
-                    if (layerActiveAt(*ML, F.t) && renderLayer(F, *ML, F.t, mb)) {
-                        if (mb.opacity < 1) for (auto& v : mb.img.px) v = (uint8_t)(v * mb.opacity);
-                        applyTrackMatte(lb.img, mb.img, mm, {0, 0, F.W, F.H});
-                    } else if (!inv) {
-                        continue;  // matte absent -> nothing visible
-                    }
-                }
-            }
+            if (!applyMatte(F, L, lb)) continue;  // matte absent -> nothing visible
             BlendMode bm = blendModeFromName(L.value("blend", std::string("normal")));
             compositeImage(acc, lb.img, bm, (float)lb.opacity, lb.bounds.intersect({0, 0, F.W, F.H}));
         }
         return acc;
+    }
+
+    // ------------------------------------------------------------ GPU plan
+    static bool animatedContent(const json& j) {
+        if (j.is_object()) {
+            auto k = j.find("k");
+            if (k != j.end() && k->is_array() && !k->empty()) return true;
+            auto x = j.find("x");
+            if (x != j.end() && x->is_string() && !x->get_ref<const std::string&>().empty()) return true;
+            for (auto it = j.begin(); it != j.end(); ++it)
+                if (animatedContent(it.value())) return true;
+        } else if (j.is_array()) {
+            for (auto& v : j)
+                if (animatedContent(v)) return true;
+        }
+        return false;
+    }
+    static bool anyEnabledEffect(const json& L) {
+        for (auto& e : jarr(L, "effects"))
+            if (e.value("enabled", true)) return true;
+        return false;
+    }
+    bool motionBlurOn(const Frame& F, const json& L) const { return jobj(*F.comp, "motionBlur").value("enabled", false) && L.value("motionBlur", false); }
+
+    // Layer → output homography and opacity for this frame (transform, parents, camera, behaviours, transitions).
+    // False when the layer is invisible or its transition needs pixel operations.
+    bool frameMapping(const Frame& F, const json& L, Mat3& H, double& opacity) {
+        opacity = 1;
+        Mat4 world = worldMatrix(F, *F.comp, L, F.t, &opacity);
+        TransitionState ts = transitionAt(F, L, F.t);
+        if (!ts.ops.empty()) return false;
+        opacity *= ts.opacity;
+        if (!layerHomography(F, L, world, H)) return false;
+        if (ts.hasPost) H = ts.post * H;
+        return true;
+    }
+
+    // Static content rendered once in layer space; the GPU applies the per-frame transform. Returns false when the
+    // layer does not qualify (the caller then renders it per frame).
+    bool planLayerSpace(const Frame& F, const json& L, PlanItem& item, bool& invisible) {
+        invisible = false;
+        std::string ty = L.value("type", "");
+        if (ty != "solid" && ty != "shape" && ty != "text" && ty != "image") return false;
+        if (anyEnabledEffect(L) || L.value("matte", json()).is_object() || motionBlurOn(F, L)) return false;
+        if (L.value("threeD", false) && jobj(jobj(L, ty.c_str()), "extrude").value("enabled", false)) return false;
+        if (L.value("threeD", false) && F.hasCamera && !F.lights.empty()) return false;  // shading depends on the pose each frame
+        if (ty == "text") {
+            const json& T = jobj(L, "text");
+            if (!jarr(T, "animators").empty() || jobj(T, "shadow").value("enabled", false)) return false;  // per-glyph timing; comp-space shadow
+        }
+        json c = L;
+        for (const char* k : {"transform", "behaviors", "name", "parent", "in", "out", "start", "transitionIn", "transitionOut", "selected", "locked", "solo", "enabled"})
+            c.erase(k);
+        if (animatedContent(c)) return false;
+        Mat3 H;
+        double opacity = 1;
+        if (!frameMapping(F, L, H, opacity)) return false;
+        if (opacity <= 0.0005) { invisible = true; return true; }
+        double x0, y0, x1, y1;
+        if (!contentRect(F, L, F.t, x0, y0, x1, y1) || x1 <= x0 || y1 <= y0) return false;
+        // Raster scale: pixels per layer unit, rounded up to a half-octave so zooms reuse the cached texture.
+        double s = std::pow(2.0, std::ceil(std::log2(std::max(1e-3, hScale(H))) * 2) / 2);
+        s = clampv(s, 1.0 / 64, 8.0);
+        double m = std::max(x1 - x0, y1 - y0) * 0.25 + 24;  // strokes, rounded joins, glow of text boxes
+        x0 -= m; y0 -= m; x1 += m; y1 += m;
+        int W2 = (int)std::ceil((x1 - x0) * s), H2 = (int)std::ceil((y1 - y0) * s);
+        if (W2 < 1 || H2 < 1 || W2 > 4096 || H2 > 4096) return false;
+        if (ty == "image") c["__asset"] = findAsset(*F.project, L.value("asset", "")) ? *findAsset(*F.project, L.value("asset", "")) : json();
+        std::string key = formatString("ls|%zx|%.5f|%.3f|%.3f|%d|%d", std::hash<std::string>{}(c.dump()), s, x0, y0, W2, H2);
+        std::shared_ptr<Image> img;
+        {
+            std::lock_guard<std::mutex> lk(I->cacheMutex);
+            img = I->cacheGet(key);
+        }
+        if (img) {
+            if (F.stats) ++F.stats->cacheHits;
+        } else {
+            json L2 = L;
+            L2["transform"] = {{"anchor", {{"v", {x0, y0, 0.0}}}}, {"position", {{"v", {0.0, 0.0, 0.0}}}}, {"scale", {{"v", {100.0, 100.0, 100.0}}}},
+                               {"rotation", {{"v", 0.0}}}, {"opacity", {{"v", 100.0}}}};
+            for (const char* k : {"parent", "behaviors", "transitionIn", "transitionOut", "matte"}) L2.erase(k);
+            L2["threeD"] = false;
+            L2["motionBlur"] = false;
+            Frame F2 = F;
+            F2.W = W2;
+            F2.H = H2;
+            F2.scale = s;
+            F2.hasCamera = false;
+            F2.lights.clear();
+            LayerBuf lb;
+            if (!renderLayerCore(F2, L2, F.t, lb)) { invisible = true; return true; }
+            Rect b = lb.bounds.intersect({0, 0, W2, H2});
+            if (b.empty()) { invisible = true; return true; }
+            img = std::make_shared<Image>(b.width(), b.height());
+            for (int y = 0; y < b.height(); ++y) std::memcpy(img->row(y), lb.img.row(b.y0 + y) + b.x0 * 4, (size_t)b.width() * 4);
+            // Remember where the crop sits inside the layer-space raster (pixels).
+            img->originX = b.x0;
+            img->originY = b.y0;
+            if (F.stats) ++F.stats->cacheMisses;
+            std::lock_guard<std::mutex> lk(I->cacheMutex);
+            I->cachePut(key, img, 256u << 20);
+        }
+        // image px → layer units: (px + origin) / s + (x0, y0); then layer → output via H.
+        Mat3 toLayer;
+        toLayer.m[0] = 1 / s; toLayer.m[2] = img->originX / s + x0;
+        toLayer.m[4] = 1 / s; toLayer.m[5] = img->originY / s + y0;
+        item.kind = PlanItem::Kind::Raster;
+        item.image = img;
+        item.cacheKey = key;
+        item.H = H * toLayer;
+        item.opacity = (float)opacity;
+        item.width = img->w;
+        item.height = img->h;
+        return true;
+    }
+
+    void buildPlan(Frame& F, RenderPlan& P) {
+        const json& comp = *F.comp;
+        P.W = F.W;
+        P.H = F.H;
+        Color bg = parseColor(comp.value("bg", json({0, 0, 0, 1})));
+        P.bg[0] = bg.r; P.bg[1] = bg.g; P.bg[2] = bg.b; P.bg[3] = bg.a;
+        P.transparent = F.depth == 0 && F.rs.transparentBackground;
+        std::vector<const json*> order = layerOrder(F);
+        for (const json* Lp : order) {
+            if (Lp->value("type", "") == "adjustment") {
+                // Adjustment layers filter everything below them: composite on the CPU for now.
+                P.fallback = true;
+                P.fallbackReason = "adjustment layer";
+                auto img = std::make_shared<Image>(renderComp(F));
+                PlanItem it;
+                it.image = img;
+                it.width = img->w;
+                it.height = img->h;
+                P.items.push_back(std::move(it));
+                ++P.frameRasters;
+                return;
+            }
+        }
+        for (const json* Lp : order) {
+            const json& L = *Lp;
+            std::string ty = L.value("type", "");
+            PlanItem item;
+            item.layerId = L.value("id", "");
+            item.blend = L.value("blend", std::string("normal"));
+            if (ty == "video" && !anyEnabledEffect(L) && jarr(L, "masks").empty() && !L.value("matte", json()).is_object() && !motionBlurOn(F, L)) {
+                const json* a = findAsset(*F.project, L.value("asset", ""));
+                Mat3 H;
+                double op = 1;
+                if (a && frameMapping(F, L, H, op)) {
+                    if (op <= 0.0005) continue;
+                    item.kind = PlanItem::Kind::Video;
+                    item.asset = *a;
+                    item.sourceTime = layerSourceTime(L, F.t);
+                    item.width = a->value("width", 100);
+                    item.height = a->value("height", 100);
+                    item.H = H;
+                    item.opacity = (float)op;
+                    P.items.push_back(std::move(item));
+                    ++P.videoItems;
+                    continue;
+                }
+            }
+            bool invisible = false;
+            if (planLayerSpace(F, L, item, invisible)) {
+                if (!invisible) { P.items.push_back(std::move(item)); ++P.cachedRasters; }
+                continue;
+            }
+            // Per-frame raster: the full CPU layer pipeline, cropped to the layer's bounds.
+            LayerBuf lb;
+            if (!renderLayer(F, L, F.t, lb)) continue;
+            if (!applyMatte(F, L, lb)) continue;
+            Rect b = lb.bounds.intersect({0, 0, F.W, F.H});
+            if (b.empty()) continue;
+            auto img = std::make_shared<Image>(b.width(), b.height());
+            for (int y = 0; y < b.height(); ++y) std::memcpy(img->row(y), lb.img.row(b.y0 + y) + b.x0 * 4, (size_t)b.width() * 4);
+            item.kind = PlanItem::Kind::Raster;
+            item.image = img;
+            item.H.m[2] = b.x0;
+            item.H.m[5] = b.y0;
+            item.opacity = (float)lb.opacity;
+            item.width = img->w;
+            item.height = img->h;
+            P.items.push_back(std::move(item));
+            ++P.frameRasters;
+        }
     }
 
     // Adjustment layer region: solid quad coverage with masks; color irrelevant.
@@ -1747,7 +1943,57 @@ Image Renderer::renderFrame(const json& project, const std::string& compId, doub
     return out;
 }
 
+Image compositePlan(const RenderPlan& P, MediaProvider* media) {
+    Image acc(P.W, P.H);
+    if (!P.transparent) acc.fill(Color(P.bg[0], P.bg[1], P.bg[2], P.bg[3]));
+    Rect full{0, 0, P.W, P.H};
+    for (const PlanItem& it : P.items) {
+        std::shared_ptr<const Image> src = it.image;
+        Mat3 toSrc;
+        if (!it.H.inverse(toSrc)) continue;
+        if (it.kind == PlanItem::Kind::Video) {
+            if (!media) continue;
+            ImagePtr f = media->videoFrame(it.asset, it.sourceTime, it.width, it.height);
+            if (!f || f->empty()) continue;
+            Mat3 s;  // asset px → frame px (decoders may return a smaller frame)
+            s.m[0] = (double)f->w / std::max(1, it.width);
+            s.m[4] = (double)f->h / std::max(1, it.height);
+            toSrc = s * toSrc;
+            src = f;
+        }
+        if (!src || src->empty()) continue;
+        Image layer(P.W, P.H);
+        Rect r = warpImage(layer, *src, toSrc, 1.f, full, 1);
+        compositeImage(acc, layer, blendModeFromName(it.blend), it.opacity, r);
+    }
+    return acc;
+}
+
+RenderPlan Renderer::renderPlan(const json& project, const std::string& compId, double t, const RenderSettings& rs, RenderStats* stats) {
+    std::lock_guard<std::mutex> lk(renderMutex_);
+    auto t0 = std::chrono::steady_clock::now();
+    RenderPlan P;
+    const json* comp = findComp(project, compId);
+    if (!comp) comp = activeComp(project);
+    if (!comp) return P;
+    audio_.setProject(&project);
+    RenderJob job(this, impl_.get(), media_, expr_.get(), &audio_);
+    Frame F;
+    F.project = &project;
+    F.comp = comp;
+    F.t = t;
+    F.scale = rs.scale;
+    F.W = std::max(1, (int)std::lround(comp->value("width", 1920) * rs.scale));
+    F.H = std::max(1, (int)std::lround(comp->value("height", 1080) * rs.scale));
+    F.rs = rs;
+    F.stats = stats;
+    job.buildPlan(F, P);
+    if (stats) stats->ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+    return P;
+}
+
 Mat4 Renderer::layerWorldMatrix(const json& comp, const json& layer, double t) {
+    std::lock_guard<std::mutex> lk(renderMutex_);  // the expression engine is not thread-safe
     RenderJob job(this, impl_.get(), media_, expr_.get(), &audio_);
     Frame F;
     F.comp = &comp;

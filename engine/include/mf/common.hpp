@@ -183,6 +183,7 @@ double fbm2D(double x, double y, uint32_t seed, int octaves);
 struct Image {
     int w = 0, h = 0;
     std::vector<uint8_t> px;
+    int originX = 0, originY = 0;  // placement metadata for cropped images (GPU plan rasters)
     Image() = default;
     Image(int w_, int h_) { resize(w_, h_); }
     void resize(int w_, int h_) { w = w_; h = h_; px.assign((size_t)std::max(0, w) * std::max(0, h) * 4, 0); }

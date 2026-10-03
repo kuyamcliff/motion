@@ -35,6 +35,9 @@ class Engine {
     const EngineConfig& config() const { return cfg_; }
     ProjectStore& store() { return store_; }
     Renderer& renderer() { return renderer_; }
+    // Geometry queries for the UI (selection quads, hit tests, comp↔layer mapping). A separate renderer with its own
+    // expression engine, so these never wait for — or race with — a frame render on the render thread.
+    Renderer& queryRenderer() { return query_; }
     MediaProvider* media() { return media_; }
 
     // ---------------------------------------------------------------- projects
@@ -92,6 +95,7 @@ class Engine {
     MediaProvider* media_;
     ProjectStore store_;
     Renderer renderer_;
+    Renderer query_;
     Document doc_;
     std::string projectId_;
     double lastSave_ = 0;

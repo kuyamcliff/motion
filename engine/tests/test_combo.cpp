@@ -371,3 +371,46 @@ TEST(stress_undo_history_and_long_timeline) {
     CHECK(steps > 0);
     CHECK(!d.canUndo());
 }
+
+// GPU plan parity: for every pair of features, compositing the GPU draw list (reference compositor) must match the
+// CPU renderer. Differences come only from resampling cached layer-space rasters, so thresholds are tight on the
+// average and allow a thin band of edge pixels.
+TEST(gpu_plan_matches_cpu_render_all_feature_pairs) {
+    Renderer R(&g_cmedia);
+    int n = (int)features().size(), fails = 0, runs = 0, cached = 0, video = 0, perFrame = 0, fallbacks = 0;
+    for (int i = 0; i < n; ++i)
+        for (int j = i; j < n; ++j) {
+            Builder b((uint32_t)(i * 131 + j));
+            features()[i].fn(b);
+            features()[j].fn(b);
+            const json& doc = b.doc.doc();
+            RenderSettings rs;
+            rs.scale = 0.5;
+            for (double t : {0.9, 2.1}) {
+                ++runs;
+                Image ref = R.renderFrame(doc, "C1", t, rs);
+                RenderPlan plan = R.renderPlan(doc, "C1", t, rs);
+                Image got = compositePlan(plan, &g_cmedia);
+                cached += plan.cachedRasters; video += plan.videoItems; perFrame += plan.frameRasters; fallbacks += plan.fallback;
+                if (got.w != ref.w || got.h != ref.h) { ++fails; std::printf("    [%s+%s] size\n", features()[i].name, features()[j].name); continue; }
+                double sum = 0;
+                int bad = 0;
+                for (size_t k = 0; k < ref.px.size(); ++k) {
+                    int d = std::abs((int)ref.px[k] - (int)got.px[k]);
+                    sum += d;
+                    if (d > 64) ++bad;
+                }
+                double mean = sum / ref.px.size();
+                double badFrac = (double)bad / ref.px.size();
+                if (mean > 2.5 || badFrac > 0.01) {
+                    ++fails;
+                    std::printf("    [%s+%s t=%.1f] mean %.2f, %.2f%% far off (cached %d, video %d, per-frame %d, fallback %d)\n", features()[i].name,
+                                features()[j].name, t, mean, badFrac * 100, plan.cachedRasters, plan.videoItems, plan.frameRasters, (int)plan.fallback);
+                }
+            }
+        }
+    std::printf("    %d frames: %d cached layer rasters, %d GPU video items, %d per-frame rasters, %d CPU fallbacks; %d mismatches\n", runs, cached,
+                video, perFrame, fallbacks, fails);
+    CHECK(fails == 0);
+    CHECK(cached > 0 && video > 0);
+}
