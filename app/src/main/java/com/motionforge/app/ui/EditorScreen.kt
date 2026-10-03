@@ -182,7 +182,9 @@ fun EditorTopBar(app: AppState, ui: EditorUi) {
         Box {
             IconBtn(Icons.Filled.MoreVert, "More") { more = true }
             DropdownMenu(more, { more = false }) {
-                (if (compact) listOf("Command palette" to { app.paletteOpen = true }, "Composition settings" to { ui.tab = InspectorTab.Comp }) else emptyList<Pair<String, () -> Unit>>()) + listOf(
+                val phoneOnly: List<Pair<String, () -> Unit>> =
+                    if (compact) listOf("Command palette" to { app.paletteOpen = true }, "Composition settings" to { ui.tab = InspectorTab.Comp }) else emptyList()
+                (phoneOnly + listOf(
                     "Save" to { st.save(); app.toast("Saved") },
                     "Save version (checkpoint)" to { st.save(version = true); app.toast("Version saved") },
                     "History" to { ui.historyOpen = true },
@@ -199,7 +201,7 @@ fun EditorTopBar(app: AppState, ui: EditorUi) {
                     (if (ui.checkerboard) "Hide transparency grid" else "Show transparency grid") to { ui.checkerboard = !ui.checkerboard },
                     (if (ui.showDiagnostics) "Hide diagnostics overlay" else "Show diagnostics overlay") to { ui.showDiagnostics = !ui.showDiagnostics },
                     "Help & documentation" to { app.go(Screen.DevCenter) },
-                ).forEach { (t, f) -> DropdownMenuItem(text = { Text(t) }, onClick = { more = false; f() }) }
+                )).forEach { (t, f) -> DropdownMenuItem(text = { Text(t) }, onClick = { more = false; f() }) }
             }
         }
     }
