@@ -16,7 +16,7 @@ All results below come from the build environment: a Linux container, and an And
 
 ## Android device suites
 
-30 tests in 7 classes, run by `scripts/android/run-tests.sh` (one instrumentation per class) on the non-debuggable `uitest` build. The final full run (`test-logs/android-full-suite-uitest.txt`) passed 29/30 tests: every class except `UiE2ETest`, whose pause step relied on an injected Space key that didn't arrive. The test now taps Pause through UiAutomator and retries the Space key, and passes (`test-logs/android-UiE2ETest-rerun.txt`).
+34 tests in 8 classes, run by `scripts/android/run-tests.sh` (one instrumentation per class) on the non-debuggable `uitest` build. In the final full run (`test-logs/android-full-suite-uitest.txt`), 7 of 8 classes passed (33/34 tests). `UiE2ETest` failed there because its tap on "Create" landed while the soft keyboard was resizing the dialog. The test now waits for the layout to settle and re-taps once if the dialog is still open, and it passes (`test-logs/android-UiE2ETest-rerun.txt`).
 
 | Class | Result on the current code | Covers |
 |---|---|---|

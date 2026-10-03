@@ -52,6 +52,9 @@ class UiE2ETest {
         try { compose.onAllNodes(hasContentDescription(prefix, substring = true)).fetchSemanticsNodes().isNotEmpty() } catch (e: IllegalStateException) { false }
     }
 
+    private fun exists(desc: String) =
+        try { compose.onAllNodes(hasContentDescription(desc, substring = true)).fetchSemanticsNodes().isNotEmpty() } catch (e: IllegalStateException) { false }
+
     private fun poll(cond: () -> Boolean) {
         val end = System.currentTimeMillis() + timeout
         while (!cond()) {
@@ -86,7 +89,12 @@ class UiE2ETest {
         compose.onNodeWithContentDescription("New Project").performClick()
         waitText("Create")
         compose.onNode(hasText("My Project")).performTextReplacement(name)
+        // Typing raises the soft keyboard, which resizes the dialog; let the layout settle before tapping.
+        compose.waitForIdle()
         compose.onNodeWithText("Create").performClick()
+        // If the keyboard animation moved the button under the tap, tap once more (the dialog is still open).
+        val opened = try { compose.waitUntil(20_000) { exists("Undo (nothing to undo)") }; true } catch (e: Throwable) { false }
+        if (!opened && compose.onAllNodesWithText("Create").fetchSemanticsNodes().isNotEmpty()) compose.onNodeWithText("Create").performClick()
 
         // Editor opens with nothing to undo.
         waitDesc("Undo (nothing to undo)")
