@@ -6,7 +6,7 @@ All results below come from the build environment: a Linux container, and an And
 
 | Suite | Result |
 |---|---|
-| `mftests`: 59 test groups (model, undo, keyframes, expressions, rendering, effects, text, 3D, audio, storage/recovery, packages, scripting, capsules, tracking, scenarios, regressions) | **59/59 pass** |
+| `mftests`: 60 test groups (model, undo, keyframes, expressions, rendering, effects, text, 3D, audio, storage/recovery, packages, scripting, capsules, tracking, scenarios, regressions, proxies) | **60/60 pass** |
 | Pair combinations: every pair of 24 feature builders | **300/300 pass** |
 | Random combinations: 3–8 features each, with determinism, round-trip, undo-all/redo-all and validation checks | **400/400** by default; **3,000/3,000** in the long run (37,820 ops applied, 38 cleanly rejected) |
 | Every effect × 6 layer kinds, with keyframed parameters | **402/402 pass** |
@@ -67,4 +67,4 @@ These are documented in [CLOUD_ANDROID_TESTING.md](CLOUD_ANDROID_TESTING.md):
 ## Not verified here
 
 * Real phones, GPU drivers, vendor codecs, and performance and thermals. The emulator is software-only. A device matrix (KVM emulators for API 24/30/33/34, phone/tablet, portrait/landscape) and an optional Firebase Test Lab job on physical devices are configured in `.github/workflows/device-matrix.yml` but haven't been run from here.
-* Gesture-level UI interactions: drag-to-trim, pinch, two-finger cancel, multi-select drags. The engine operations behind them are verified; the gestures themselves aren't automated yet.
+* Some gestures are still not automated: the rotate handle, two-finger rotate, two-finger pan on the tracks, edge auto-scroll, and multi-select drags. Trim, move, two-finger cancel, pinch zoom, the preview move/scale handles, mask, draw, pen, and graph and bezier drags are covered by `GestureE2ETest`.

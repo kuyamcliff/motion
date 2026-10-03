@@ -13,7 +13,7 @@ Each feature is marked with the strongest evidence that currently exists for it:
 
 ## Summary
 
-Device suite: 34 tests in 8 classes, all passing on the current code; the whole-suite run on the `uitest` build is in VERIFICATION.md. Host: 59 test groups, including 300 + 3,000 combinations and 402 effect × layer pairs.
+Device suite: 34 tests in 8 classes, all passing on the current code; the whole-suite run on the `uitest` build is in VERIFICATION.md. Host: 60 test groups, including 300 + 3,000 combinations and 402 effect × layer pairs.
 
 Bugs found and fixed by this phase's tests:
 1. Extension effects never appeared in the effect browser, and the registry was cached for the app's lifetime.
